@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <script type="text/javascript"
+        src="https://cdn.jsdelivr.net/npm/eventemitter2@6.4.9/lib/eventemitter2.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/roslib@1/build/roslib.min.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #container {
+            display: flex;
+        }
+
+        #videoContainer {
+            margin-right: 20px;
+        }
+    </style>
+
+    <script type="text/javascript">
+        // Connecting to ROS
+        // -----------------
+        var ros = new ROSLIB.Ros({
+            url: 'ws://localhost:9090'
+        });
+
+        ros.on('connection', function () {
+            console.log('Connected to websocket server.');
+        });
+
+        ros.on('error', function (error) {
+            console.log('Error connecting to websocket server: ', error);
+        });
+
+        ros.on('close', function () {
+            console.log('Connection to websocket server closed.');
+        });
+
+        // Publishing a Topic
+        // ------------------
+        var cmdVel = new ROSLIB.Topic({
+            ros: ros,
+            name: '/cmd_vel',
+            messageType: 'geometry_msgs/Twist'
+        });
+
+        function move(linear, angular) {
+            var twist = new ROSLIB.Message({
+                linear: { x: linear },
+                angular: { z: angular }
+            });
+            cmdVel.publish(twist);
+        };
+
+        // Subscribing to a Topic
+        // ----------------------
+        var listener = new ROSLIB.Topic({
+            ros: ros,
+            name: '/listener',
+            messageType: 'std_msgs/String'
+        });
+
+        listener.subscribe(function (message) {
+            console.log('Received message on ' + listener.name + ': ' + message.data);
+            listener.unsubscribe();
+        });
+
+
+        // Lidar 
+        // ----------------------
+        var lidar = new ROSLIB.Topic({
+            ros: ros,
+            name: '/scan',
+            messageType: 'sensor_msgs/LaserScan'
+        });
+        console.log("Lidar Topic: " + lidar.name);
+
+        function drawLidarData(ctx, message) {
+            ctx.clearRect(0, 0, 300, 300); // Clear the canvas
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, 300, 300); // Draw background
+
+            var angle_increment = message.angle_increment;
+            var angle_min = message.angle_min;
+            var ranges = message.ranges;
+
+            // Draw robot position (center)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(150, 150, 5, 0, 2 * Math.PI); // Robot at the center of the canvas
+            ctx.fill();
+
+            // Draw robot direction (front)
+            ctx.strokeStyle = 'white';
+            ctx.beginPath();
+            ctx.moveTo(150, 150);
+            ctx.lineTo(150, 100); // A line showing the front direction
+            ctx.stroke();
+
+            ctx.fillStyle = 'red';
+
+            ranges.forEach(function (range, index) {
+                if (range < message.range_max && range > message.range_min) {
+                    var angle = angle_min + index * angle_increment;
+                    var x = range * Math.cos(angle - Math.PI - Math.PI / 2); // Adjust angle by -pi -pi/2
+                    var y = range * Math.sin(angle - Math.PI - Math.PI / 2); // Adjust angle by -pi -pi/2
+
+                    // Convert to canvas coordinates
+                    var canvasX = 150 + x * 50;
+                    var canvasY = 150 - y * 50;
+
+                    ctx.beginPath();
+                    ctx.arc(canvasX, canvasY, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+        }
+
+        lidar.subscribe(function (message) {
+            console.log('Received message on ' + lidar.name + ': ' + message);
+            var ctx = document.getElementById('Lidar-canvas').getContext('2d');
+            drawLidarData(ctx, message);
+        });
+    </script>
+</head>
+
+<body>
+    <div id="container">
+        <div id="videoContainer">
+            <img id="videoStream" src="http://localhost:8080/stream?topic=/camera/image_raw" width="640" height="480" />
+        </div>
+
+        <div id="commandes">
+            <div id="Drive" class="w3-container w3-padding">
+                <div class="w3-auto" style="display: grid; width:12em; height:9em;">
+                    <button onmousedown="move(1.0, 0.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(1.0, 0.0);"
+                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 2; grid-row: 1;'>
+                        <i class='fas fa-caret-up'></i>
+                    </button>
+                    <button onmousedown="move(0.0, 1.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(0.0, 1.0);"
+                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 1; grid-row: 2;'>
+                        <i class='fas fa-caret-left'></i>
+                    </button>
+                    <button onmousedown="move(-1.0, 0.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(-1.0, 0.0);"
+                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 2; grid-row: 2;'>
+                        <i class='fas fa-caret-down'></i>
+                    </button>
+                    <button onmousedown="move(0.0, -1.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(0.0, -1.0);"
+                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 3; grid-row: 2;'>
+                        <i class='fas fa-caret-right'></i>
+                    </button>
+                    <button onclick="move(0.0, 0.0);" style='font-size:2em; grid-column: 1 / 4; grid-row: 3;'>
+                        STOP
+                    </button>
+                </div>
+                <br />
+            </div>
+        </div>
+    </div>
+
+    <div class="w3-card-4 w3-margin-bottom">
+        <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
+            <h5 id="lidar_label" class="w3-bar-item" style="margin: 0;">Lidar</h5>
+            <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-line-chart'></i></h5>
+        </header>
+        <div id="Lidar" class="w3-container w3-padding" style="width: 95%; height: 300px;">
+            <canvas id="Lidar-canvas" width="300" height="300"></canvas>
+        </div>
+        <br />
+    </div>
+</body>
+
+</html>
