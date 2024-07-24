@@ -12,18 +12,78 @@
     <style>
         body {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
             margin: 0;
+        }
+
+        #title-container {
+            background-color: #4CAF50;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #title-container h1 {
+            margin: 20px 0;
+            color: white;
         }
 
         #container {
             display: flex;
+            margin-top: 20px;
         }
 
-        #videoContainer {
+        #lidar-chat-container {
+            display: flex;
+            margin-top: 20px;
+        }
+
+        #lidar-card {
             margin-right: 20px;
+        }
+
+        #commands-card {
+            height: fit-content;
+            margin-left: 20px;
+        }
+
+        #stream-card {
+            height: fit-content;
+            margin-right: 20px;
+        }
+
+        #message-card {
+            width: 300px;
+            
+        }
+
+        #messages {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        #messageInput {
+            width: calc(100% - 22px); /* Subtract padding and border */
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        #sendMessage {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #sendMessage:hover {
+            background-color: #45a049;
         }
     </style>
 
@@ -74,7 +134,6 @@
             console.log('Received message on ' + listener.name + ': ' + message.data);
             listener.unsubscribe();
         });
-
 
         // Lidar 
         // ----------------------
@@ -131,52 +190,95 @@
             var ctx = document.getElementById('Lidar-canvas').getContext('2d');
             drawLidarData(ctx, message);
         });
+
+        // Messaging
+        // ----------------------
+        var chatTopic = new ROSLIB.Topic({
+            ros: ros,
+            name: '/chatter',
+            messageType: 'std_msgs/String'
+        });
+
+        chatTopic.subscribe(function (message) {
+            var messagesDiv = document.getElementById('messages');
+            console.log('Received message on ' + chatTopic.name + ': ' + message.data);
+            messagesDiv.innerHTML += '<p>Robot: ' + message.data + '</p>';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        function sendMessage() {
+            var input = document.getElementById('messageInput');
+            var message = new ROSLIB.Message({
+                data: input.value
+            });
+            chatTopic.publish(message);
+            document.getElementById('messages').innerHTML += '<p>You: ' + input.value + '</p>';
+            input.value = '';
+        }
     </script>
 </head>
 
 <body>
+    <div id="title-container">
+        <h1>ROS Web Tools</h1>
+    </div>
     <div id="container">
-        <div id="videoContainer">
-            <img id="videoStream" src="http://localhost:8080/stream?topic=/camera/image_raw" width="640" height="480" />
+        <div id="video-card" class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
+                <h5 class="w3-bar-item" style="margin: 0;">Video Stream</h5>
+            </header>
+            <div id="videoContainer">
+                <img id="videoStream" src="http://localhost:8080/stream?topic=/camera/image_raw" width="640" height="480" />
+            </div>
         </div>
-
-        <div id="commandes">
-            <div id="Drive" class="w3-container w3-padding">
-                <div class="w3-auto" style="display: grid; width:12em; height:9em;">
-                    <button onmousedown="move(1.0, 0.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(1.0, 0.0);"
-                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 2; grid-row: 1;'>
-                        <i class='fas fa-caret-up'></i>
-                    </button>
-                    <button onmousedown="move(0.0, 1.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(0.0, 1.0);"
-                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 1; grid-row: 2;'>
-                        <i class='fas fa-caret-left'></i>
-                    </button>
-                    <button onmousedown="move(-1.0, 0.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(-1.0, 0.0);"
-                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 2; grid-row: 2;'>
-                        <i class='fas fa-caret-down'></i>
-                    </button>
-                    <button onmousedown="move(0.0, -1.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(0.0, -1.0);"
-                        ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 3; grid-row: 2;'>
-                        <i class='fas fa-caret-right'></i>
-                    </button>
-                    <button onclick="move(0.0, 0.0);" style='font-size:2em; grid-column: 1 / 4; grid-row: 3;'>
-                        STOP
-                    </button>
+        <div id="commands-card" class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
+                <h5 class="w3-bar-item" style="margin: 0;">Commands</h5>
+            </header>
+            <div id="commandes">
+                <div id="Drive" class="w3-container w3-padding">
+                    <div class="w3-auto" style="display: grid; width:12em; height:9em;">
+                        <button onmousedown="move(1.0, 0.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(1.0, 0.0);" ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 2; grid-row: 1;'>
+                            <i class='fas fa-caret-up'></i>
+                        </button>
+                        <button onmousedown="move(0.0, 1.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(0.0, 1.0);" ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 1; grid-row: 2;'>
+                            <i class='fas fa-caret-left'></i>
+                        </button>
+                        <button onmousedown="move(-1.0, 0.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(-1.0, 0.0);" ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 2; grid-row: 2;'>
+                            <i class='fas fa-caret-down'></i>
+                        </button>
+                        <button onmousedown="move(0.0, -1.0);" onmouseup="move(0.0, 0.0);" ontouchstart="move(0.0, -1.0);" ontouchend="move(0.0, 0.0);" style='font-size:2em; grid-column: 3; grid-row: 2;'>
+                            <i class='fas fa-caret-right'></i>
+                        </button>
+                        <button onclick="move(0.0, 0.0);" style='font-size:2em; grid-column: 1 / 4; grid-row: 3;'>STOP</button>
+                    </div>
+                    <br />
                 </div>
-                <br />
             </div>
         </div>
     </div>
 
-    <div class="w3-card-4 w3-margin-bottom">
-        <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
-            <h5 id="lidar_label" class="w3-bar-item" style="margin: 0;">Lidar</h5>
-            <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-line-chart'></i></h5>
-        </header>
-        <div id="Lidar" class="w3-container w3-padding" style="width: 95%; height: 300px;">
-            <canvas id="Lidar-canvas" width="300" height="300"></canvas>
+    <div id="lidar-chat-container">
+        <div id="lidar-card" class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
+                <h5 id="lidar_label" class="w3-bar-item" style="margin: 0;">Lidar</h5>
+            </header>
+            <div id="Lidar" class="w3-container w3-padding">
+                <canvas id="Lidar-canvas" width="300" height="300"></canvas>
+            </div>
+            <br />
         </div>
-        <br />
+
+        <div id="message-card" class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green">
+                <h5 class="w3-bar-item" style="margin: 0;">Chat</h5>
+            </header>
+            <div class="w3-container w3-padding">
+                <div id="messages"></div>
+                <input type="text" id="messageInput" placeholder="Type your message here..." />
+                <button id="sendMessage" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
     </div>
 </body>
 
