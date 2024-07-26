@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "janode": "^1.7.1",
+    "mqtt": "^5.9.0"
+  }
+}
