@@ -16,6 +16,7 @@ include_directories(include)
 ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
 scripts/webrtc-node/webrtc_node.py
+scripts/ros-mqtt/mqtt_node.py
 DESTINATION lib/${PROJECT_NAME}
 )
 
