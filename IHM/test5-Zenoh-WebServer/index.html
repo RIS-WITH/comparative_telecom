@@ -249,12 +249,14 @@
         const restParam = urlParams.get('rest');
         if (restParam != null && restParam.length > 0) {
             console.log("Set REST API from URL params: " + restParam);
-            document.getElementById("rest_api").value = restParam;
+            //document.getElementById("rest_api").value = restParam;
+            restParam = "http://kirito-dock.laas.fr:8800/ ";
         }
         const scopeParam = urlParams.get('scope');
         if (scopeParam != null && scopeParam.length > 0) {
             console.log("Set custom scope from URL params: " + scopeParam);
-            document.getElementById("scope_input").value = scopeParam;
+            //document.getElementById("scope_input").value = scopeParam;
+            scopeParam = "0";
         }
 
         // Add listener for input changes REST API and Scope inputs
