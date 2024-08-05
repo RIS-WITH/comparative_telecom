@@ -5,15 +5,93 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+        }
+
+        #title-container {
+            background-color: #4CAF50;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #title-container h1 {
+            margin: 20px 0;
+            color: white;
+        }
+
+        #container {
+            display: flex;
+            margin-top: 20px;
+        }
+
+        #lidar-chat-container {
+            display: flex;
+            margin-top: 20px;
+        }
+
+        #lidar-card {
+            margin-right: 20px;
+        }
+
+        #commands-card {
+            height: fit-content;
+            margin-left: 20px;
+        }
+
+        #stream-card {
+            height: fit-content;
+            margin-right: 20px;
+        }
+
+        #message-card {
+            width: 300px;
+
+        }
+
+        #messages {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        #messageInput {
+            width: calc(100% - 22px);
+            /* Subtract padding and border */
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        #sendMessage {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #sendMessage:hover {
+            background-color: #45a049;
+        }
+    </style>
 </head>
 
-<body class="w3-container">
-    <div class="w3-container w3-bar w3-card-4 w3-green w3-margin-bottom">
-        <h3 class="w3-bar-item">Zenoh ROS2 teleop</h3>
-        <h3 id="battery_label" class="w3-bar-item w3-right">Battery: - %</h3>
+<body>
+    <div id="title-container">
+        <h1>Zenoh ROS2 teleop</h1>
+
     </div>
 
-    <div class="w3-row">
+    <!--<div class="w3-row">
         <div class="w3-col s2 m2 l2">
             <label for="rest_api">Zenoh REST API:</label>
         </div>
@@ -30,12 +108,12 @@
             <input id="scope_input" class="w3-input w3-border w3-padding-small w3-margin-right" type="text" required
                 value="simu">
         </div>
-    </div>
+    </div> -->
 
-    <br />
+
 
     <!-- If your robot has a camera and zcapture installed (from zenoh-demos/computer-vision/zcam/), uncomment this:  -->
-<!--     
+    <!--     
     <div class="w3-card-4 w3-margin-bottom">
         <header class="w3-bar w3-green" onclick="document.getElementById('Camera').classList.toggle('w3-hide');">
             <h5 id="camera_label" class="w3-bar-item" style="margin: 0;">Camera</h5>
@@ -46,66 +124,86 @@
         </div>
         <br />
     </div> -->
-   
 
-    <div class="w3-card-4 w3-margin-bottom">
-        <header class="w3-bar w3-green" onclick="document.getElementById('Drive').classList.toggle('w3-hide');">
-            <h5 id="drive_label" class="w3-bar-item" style="margin: 0;">Drive</h5>
-            <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-gamepad'></i></h5>
-        </header>
-        <div id="Drive" class="w3-container w3-padding">
-            <div class="w3-auto" style="display: grid; width:12em; height:9em; ">
-                <button onmousedown="pubTwist(1.0, 0.0);" onmouseup="pubTwist(0.0, 0.0);"
-                    ontouchstart="pubTwist(1.0, 0.0);" ontouchend="pubTwist(0.0, 0.0);"
-                    style='font-size:2em; grid-column: 2; grid-row: 1;'>
-                    <i class='fas fa-caret-up'></i>
-                </button>
-                <button onmousedown="pubTwist(0.0, 1.0);" onmouseup="pubTwist(0.0, 0.0);"
-                    ontouchstart="pubTwist(0.0, 1.0);" ontouchend="pubTwist(0.0, 0.0);"
-                    style='font-size:2em; grid-column: 1; grid-row: 2;'>
-                    <i class='fas fa-caret-left'></i>
-                </button>
-                <button onmousedown="pubTwist(-1.0, 0.0);" onmouseup="pubTwist(0.0, 0.0);"
-                    ontouchstart="pubTwist(-1.0, 0.0);" ontouchend="pubTwist(0.0, 0.0);"
-                    style='font-size:2em; grid-column: 2; grid-row: 2;'>
-                    <i class='fas fa-caret-down'></i>
-                </button>
-                <button onmousedown="pubTwist(0.0, -1.0);" onmouseup="pubTwist(0.0, 0.0);"
-                    ontouchstart="pubTwist(0.0, -1.0);" ontouchend="pubTwist(0.0, 0.0);"
-                    style='font-size:2em; grid-column: 3; grid-row: 2;'>
-                    <i class='fas fa-caret-right'></i>
-                </button>
-                <button onclick="pubTwist(0.0, 0.0);" style='font-size:2em; grid-column: 1 / 4; grid-row: 3;'>
-                    STOP
-                </button>
+    <div id="container">
+        <div class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green"
+                onclick="document.getElementById('Camera_ROS').classList.toggle('w3-hide');">
+                <h5 id="camera_ros_label" class="w3-bar-item" style="margin: 0;">Camera ROS</h5>
+
+            </header>
+            <div id="videoContainer">
+                <div id="Camera_ROS" class="w3-container w3-padding" style="width: 95%; height: 300px;">
+                    <canvas id="ros-camera-canvas" width="300" height="300"></canvas>
+                </div>
             </div>
-            <br />
+
+        </div>
+        <div id="commands-card" class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green" onclick="document.getElementById('Drive').classList.toggle('w3-hide');">
+                <h5 id="drive_label" class="w3-bar-item" style="margin: 0;">Drive</h5>
+                <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-gamepad'></i></h5>
+            </header>
+            <div id="commandes">
+                <div id="Drive" class="w3-container w3-padding">
+                    <div class="w3-auto" style="display: grid; width:12em; height:9em; ">
+                        <button onmousedown="pubTwist(1.0, 0.0);" onmouseup="pubTwist(0.0, 0.0);"
+                            ontouchstart="pubTwist(1.0, 0.0);" ontouchend="pubTwist(0.0, 0.0);"
+                            style='font-size:2em; grid-column: 2; grid-row: 1;'>
+                            <i class='fas fa-caret-up'></i>
+                        </button>
+                        <button onmousedown="pubTwist(0.0, 1.0);" onmouseup="pubTwist(0.0, 0.0);"
+                            ontouchstart="pubTwist(0.0, 1.0);" ontouchend="pubTwist(0.0, 0.0);"
+                            style='font-size:2em; grid-column: 1; grid-row: 2;'>
+                            <i class='fas fa-caret-left'></i>
+                        </button>
+                        <button onmousedown="pubTwist(-1.0, 0.0);" onmouseup="pubTwist(0.0, 0.0);"
+                            ontouchstart="pubTwist(-1.0, 0.0);" ontouchend="pubTwist(0.0, 0.0);"
+                            style='font-size:2em; grid-column: 2; grid-row: 2;'>
+                            <i class='fas fa-caret-down'></i>
+                        </button>
+                        <button onmousedown="pubTwist(0.0, -1.0);" onmouseup="pubTwist(0.0, 0.0);"
+                            ontouchstart="pubTwist(0.0, -1.0);" ontouchend="pubTwist(0.0, 0.0);"
+                            style='font-size:2em; grid-column: 3; grid-row: 2;'>
+                            <i class='fas fa-caret-right'></i>
+                        </button>
+                        <button onclick="pubTwist(0.0, 0.0);" style='font-size:2em; grid-column: 1 / 4; grid-row: 3;'>
+                            STOP
+                        </button>
+                    </div>
+                    <br />
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="w3-card-4 w3-margin-bottom">
-        <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
-            <h5 id="lidar_label" class="w3-bar-item" style="margin: 0;">Lidar</h5>
-            <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-line-chart'></i></h5>
-        </header>
-        <div id="Lidar" class="w3-container w3-padding" style="width: 95%; height: 300px;">
-            <canvas id="Lidar-canvas" width="300" height="300"></canvas>
+    <div id="lidar-chat-container">
+        <div id="lidar-card" class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
+                <h5 id="lidar_label" class="w3-bar-item" style="margin: 0;">Lidar</h5>
+
+            </header>
+            <div id="Lidar" class="w3-container w3-padding" style="width: 95%; height: 300px;">
+                <canvas id="Lidar-canvas" width="300" height="300"></canvas>
+            </div>
+
         </div>
-        <br />
+        <div id="message-card" class="w3-card-4 w3-margin-bottom">
+            <header class="w3-bar w3-green">
+                <h5 class="w3-bar-item" style="margin: 0;">Chat</h5>
+            </header>
+            <div class="w3-container w3-padding">
+                <div id="messages"></div>
+                <input type="text" id="messageInput" placeholder="Type your message here..." />
+                <button id="sendMessage" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
     </div>
 
-    <div class="w3-card-4 w3-margin-bottom">
-        <header class="w3-bar w3-green" onclick="document.getElementById('Camera_ROS').classList.toggle('w3-hide');">
-            <h5 id="camera_ros_label" class="w3-bar-item" style="margin: 0;">Camera ROS</h5>
-            <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-line-chart'></i></h5>
-        </header>
-        <div id="Camera_ROS" class="w3-container w3-padding" style="width: 95%; height: 300px;">
-            <canvas id="ros-camera-canvas" width="300" height="300"></canvas>
-        </div>
-        <br />
-    </div>
+    <br />
 
-    <div class="w3-card-4 w3-margin-bottom">
+
+    <!--<div class="w3-card-4 w3-margin-bottom">
         <header class="w3-bar w3-green" onclick="document.getElementById('Logs').classList.toggle('w3-hide');">
             <h5 id="logs_label" class="w3-bar-item" style="margin: 0;">Logs</h5>
             <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-envelope'></i></h5>
@@ -113,9 +211,9 @@
         <div id="Logs" class="w3-container w3-padding">
             <div style="overflow:auto; height:200px; border:1px solid black;" id="rosout_logs"></div>
         </div>
-    </div>
+    </div>-->
 
-    <div class="w3-card-4 w3-margin-bottom">
+    <!--<div class="w3-card-4 w3-margin-bottom">
         <header class="w3-bar w3-green" onclick="document.getElementById('Config').classList.toggle('w3-hide');">
             <h5 class="w3-bar-item" style="margin: 0;">Config</h5>
             <h5 class="w3-bar-item w3-right" style="margin: 0;"><i class='fa fa-gear'></i></h5>
@@ -128,7 +226,7 @@
             <input id="angular_scale" class="w3-input w3-border w3-padding-small" type="number" required
                 value="5"><br />
         </form>
-    </div>
+    </div>-->
 
 
     <script src="https://cdn.jsdelivr.net/npm/bytebuffer@5.0.1"></script>
@@ -424,7 +522,7 @@
                     for (let x = 0; x < image.width; x++) {
                         const index = (y * image.width + x) * 3; // 3 bytes per pixel (RGB)
                         const canvasIndex = (y * image.width + x) * 4; // 4 bytes per pixel (RGBA)
-                        imageData.data[canvasIndex] = image.data[index+2];     // Red
+                        imageData.data[canvasIndex] = image.data[index + 2];     // Red
                         imageData.data[canvasIndex + 1] = image.data[index + 1]; // Green
                         imageData.data[canvasIndex + 2] = image.data[index]; // Blue
                         imageData.data[canvasIndex + 3] = 255; // Alpha (opaque)
@@ -668,7 +766,7 @@
         class String {
             constructor(data) {
                 this.data = data;
-              
+
             }
 
             static decode(cdrReader) {
@@ -820,7 +918,7 @@
                 this.is_bigendian = is_bigendian;
                 this.step = step;
                 this.data = data;
-              
+
             }
 
             static decode(cdrReader) {
@@ -836,7 +934,7 @@
                 let step = cdrReader.readUint32();
                 // console.log("step: " + step);
                 let data = [];
-                for (const x of Array(height*step).keys()) {
+                for (const x of Array(height * step).keys()) {
                     data.push(cdrReader.readByte())
                 }
                 return new Image(header, height, width, encoding, is_bigendian, step, data);
