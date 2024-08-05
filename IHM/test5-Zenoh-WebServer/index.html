@@ -244,19 +244,27 @@
         // MQTT topic name (for logging)
         const TOPIC_MQTT = "zigbee2mqtt/device/**"
 
+         // The REST API URL and scope
+
+         const rest_api = "http://kirito-dock.laas.fr:8800/";
+        const scope = "0";
+
+        const sub_scope = scope;
+
+
         // Get "rest" and "scope" from URL params, and set "rest_api" and "scope_input" elements accordingly
-        const urlParams = new URLSearchParams(window.location.search);
+       /* const urlParams = new URLSearchParams(window.location.search);
         const restParam = urlParams.get('rest');
         if (restParam != null && restParam.length > 0) {
             console.log("Set REST API from URL params: " + restParam);
-            //document.getElementById("rest_api").value = restParam;
-            restParam = "http://kirito-dock.laas.fr:8800/ ";
+            document.getElementById("rest_api").value = restParam;
+           
         }
         const scopeParam = urlParams.get('scope');
         if (scopeParam != null && scopeParam.length > 0) {
             console.log("Set custom scope from URL params: " + scopeParam);
-            //document.getElementById("scope_input").value = scopeParam;
-            scopeParam = "0";
+            document.getElementById("scope_input").value = scopeParam;
+            
         }
 
         // Add listener for input changes REST API and Scope inputs
@@ -277,7 +285,7 @@
         var scope = document.getElementById("scope_input").value;
         if (scope.length > 0 && !scope.endsWith("/")) { scope += "/" }
         // If scope contains '*', default to "bot1" for subscription to avoid display conflicts of camera+lidar
-        var sub_scope = scope.includes('*') ? "bot1/" : scope;
+        var sub_scope = scope.includes('*') ? "bot1/" : scope;*/
 
         /////////////////////////
         //  Twist publication  //
@@ -558,13 +566,13 @@
             elem.innerHTML = "ROS Camera ( " + key_expr + " )";
 
             // Get canvas context and get its dimensions
-            const canvas = document.getElementById('ros-camera-canvas');
+           /* const canvas = document.getElementById('ros-camera-canvas');
             const ctx = canvas.getContext('2d');
             const width = canvas.width;
             const height = canvas.height;
 
             // Clear canvas
-            ctx.clearRect(0, 0, width, height);
+            ctx.clearRect(0, 0, width, height);*/
 
             // Create EventSource for subscription to key_expr
             console.log("Subscribe to EventSource: " + rest_api + key_expr);
@@ -668,8 +676,8 @@
             var key_expr = sub_scope + TOPIC_LOGS;
 
             // update Lidar label
-            let elem = document.getElementById("logs_label");
-            elem.innerHTML = "Logs ( " + key_expr + " + " + TOPIC_MQTT + " )";
+            //let elem = document.getElementById("logs_label");
+            //elem.innerHTML = "Logs ( " + key_expr + " + " + TOPIC_MQTT + " )";
 
             // Create EventSource for subscription to key_expr
             console.log("Subscribe to EventSource: " + rest_api + key_expr);
