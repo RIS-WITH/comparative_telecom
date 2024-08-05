@@ -23,7 +23,7 @@ class ROSMQTTBridge(Node):
         self.mqtt_client.on_publish = self.on_publish
         self.mqtt_client.on_message = self.on_message
 
-        self.mqtt_client.connect("localhost", 1883, 60)
+        self.mqtt_client.connect("raikou.laas.fr", 1883, 60)
         self.mqtt_client.loop_start()
 
         # Souscription aux topics ROS
