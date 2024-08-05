@@ -301,8 +301,10 @@
         // Function to publish a Twist to cmd_vel topic
         function pubTwist(linear, angular) {
             // Get scales from HTML
-            var linear_scale = document.getElementById("linear_scale").value
-            var angular_scale = document.getElementById("angular_scale").value
+            //var linear_scale = document.getElementById("linear_scale").value
+            //var angular_scale = document.getElementById("angular_scale").value
+            var linear_scale = 10.0
+            var angular_scale = 5.0
 
             // Create a Twist message
             var twist = new Twist(
