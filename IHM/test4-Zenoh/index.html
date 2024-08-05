@@ -298,7 +298,7 @@
         function pubTwist(linear, angular) {
             // Get scales from HTML
             //var linear_scale = document.getElementById("linear_scale").value
-           // var angular_scale = document.getElementById("angular_scale").value
+            // var angular_scale = document.getElementById("angular_scale").value
             var linear_scale = 10.0
             var angular_scale = 5.0
             // Create a Twist message
@@ -664,7 +664,7 @@
 
 
 
-        
+
 
 
 
@@ -706,6 +706,39 @@
         } else {
             document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
         }
+
+        //////////////////////////////////
+        //    Send Message to Topic    //
+        //////////////////////////////////
+        function sendMessage() {
+            var input = document.getElementById('messageInput');
+            message = input.value;
+            console.log("Send message: " + message);
+            const url = rest_api + sub_scope + "chatter";
+
+            
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ data: message })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Message sent successfully:", data);
+                })
+                .catch(error => {
+                    console.error("There was a problem with the fetch operation:", error);
+                });
+        }
+
+      
 
         //////////////////////////////////
         //    Logs subscription (MQTT)  //
