@@ -662,6 +662,12 @@
             document.document.getElementById("Lidar").innerHTML = "Sorry, your browser does not support server-sent events...";
         }
 
+
+
+        
+
+
+
         //////////////////////////////////
         //    Logs subscription (ROS2)  //
         //////////////////////////////////
@@ -690,7 +696,7 @@
                 // Decode the buffer as a Log message
                 let log = String.decode(reader);
                 // Add it to "rosout_logs" HTML element
-                let elem = document.getElementById("rosout_logs");
+                let elem = document.getElementById("messages");
                 // elem.innerHTML += "ROS2: [" + log.time.sec + "." + log.time.nsec + "] [" + log.name + "]: " + log.msg + "<br>";
                 elem.innerHTML += "ROS2: " + log.data + "<br>";
                 // Auto-scroll to the bottom
