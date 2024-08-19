@@ -91,7 +91,7 @@
         // Connecting to ROS
         // -----------------
         var ros = new ROSLIB.Ros({
-            url: 'ws://kirito.laas.fr:9090'
+            url: 'ws://kirito-dock:9999'
         });
 
         ros.on('connection', function () {
@@ -228,7 +228,7 @@
                 <h5 class="w3-bar-item" style="margin: 0;">Video Stream</h5>
             </header>
             <div id="videoContainer">
-                <img id="videoStream" src="http://kirito.laas.fr:8080/stream?topic=/camera/image_raw" width="640" height="480" />
+                <img id="videoStream" src="http://kirito-dock:8080/stream?topic=/camera/image_raw" width="640" height="480" />
             </div>
         </div>
         <div id="commands-card" class="w3-card-4 w3-margin-bottom">

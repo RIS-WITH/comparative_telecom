@@ -45,9 +45,10 @@
             margin-left: 20px;
         }
 
-        #stream-card {
-            height: fit-content;
-            margin-right: 20px;
+        #videoStream {
+            margin-left: 0px;
+            
+            
         }
 
         #message-card {
@@ -127,7 +128,7 @@
     </div> -->
 
     <div id="container">
-        <div class="w3-card-4 w3-margin-bottom">
+        <div id = "stream-card" class="w3-card-4 w3-margin-bottom">
             <header class="w3-bar w3-green"
                 onclick="document.getElementById('Camera_ROS').classList.toggle('w3-hide');">
                 <h5 id="camera_ros_label" class="w3-bar-item" style="margin: 0;">Camera ROS</h5>
@@ -246,7 +247,7 @@
 
          // The REST API URL and scope
 
-         const rest_api = "http://kirito-dock.laas.fr:8800/";
+         const rest_api = "http://localhost:8800/";
         const scope = "0/";
 
         const sub_scope = scope;
@@ -361,6 +362,181 @@
         }
         // register callback on key up
         document.onkeyup = onkeyup;
+
+
+
+        /////////////////////////////
+        //  joystick publication  //
+        /////////////////////////////
+
+        //fonction de deplacement du robot avec le joystick physique
+        function moveTurtleBot(linearVelocity, angularVelocity) {
+            pubTwist(linearVelocity, angularVelocity);
+
+        }
+
+        function buttonPressed(b) {
+            if (typeof b === "object") {
+                return b.pressed;
+            }
+            return b === 1.0;
+        }
+
+        function gameLoop() {
+
+
+
+            const gamepads = navigator.getGamepads();
+            if (!gamepads) {
+                return;
+            }
+
+            //bouttons lettres
+
+            const gp = gamepads[0];
+            if (this.buttonPressed(gp.buttons[0])) { //A
+                console.log("i go up");
+                b--;
+            } else if (this.buttonPressed(gp.buttons[2])) { //X
+                b++;
+                console.log("i go down");
+            }
+            if (this.buttonPressed(gp.buttons[1])) { //B
+                console.log("i go droit");
+                a++;
+            } else if (this.buttonPressed(gp.buttons[3])) { //Y
+                console.log("i go gauche");
+                a--;
+            }
+
+
+            //LR
+            if (this.buttonPressed(gp.buttons[4])) { //LB
+                console.log("LB");
+
+            }
+            if (this.buttonPressed(gp.buttons[5])) { //RB
+                console.log("RB");
+
+            }
+
+            //Back Start
+            /*if (this.buttonPressed(gp.buttons[6])) { //BACK
+                console.log("BACK");
+
+            } else if (this.buttonPressed(gp.buttons[7])) { //START
+                console.log("START");
+
+            }*/
+
+
+
+
+
+
+            //joystick gauche
+            const stickDeadZone = 0.4;
+            const leftRightValue = gp.axes[0];
+            const upDownValue = gp.axes[1];
+
+            //joystick droit (ajoute du lag si on l'utilise pour le controle du mouvement du robot)
+
+            const droitleftRightValue = gp.axes[2];
+            const droitupDownValue = gp.axes[3];
+
+
+
+
+            //avec sécurité mais moins propre
+            if (this.buttonPressed(gp.buttons[5], true)) { //RB
+                console.log("RB");
+
+
+                if (leftRightValue >= stickDeadZone) {
+                    console.log("droit !");
+                    linearJoyVel = -upDownValue - stickDeadZone - 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+
+
+                } else if (leftRightValue <= -stickDeadZone) {
+                    console.log("gauche !");
+                    linearJoyVel = -upDownValue + stickDeadZone + 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+
+                } else if (upDownValue >= stickDeadZone) {
+                    console.log("bas !");
+
+                    angularJoyVel = -leftRightValue - stickDeadZone - 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+
+                } else if (upDownValue <= -stickDeadZone) {
+                    console.log("haut !");
+                    angularJoyVel = -leftRightValue + stickDeadZone + 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+
+                } else if (droitleftRightValue >= stickDeadZone) {
+                    console.log("droit !");
+                    angularJoyVel = -droitleftRightValue + stickDeadZone + 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+
+                } else if (droitleftRightValue <= -stickDeadZone) {
+                    console.log("gauche !");
+                    angularJoyVel = -droitleftRightValue - stickDeadZone - 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+
+                } else if (droitupDownValue >= stickDeadZone) {
+                    console.log("bas !");
+                    linearJoyVel = -droitupDownValue + stickDeadZone + 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+                } else if (droitupDownValue <= -stickDeadZone) {
+                    console.log("haut !");
+                    linearJoyVel = -droitupDownValue - stickDeadZone - 0.15;
+                    this.moveTurtleBot(linearJoyVel, angularJoyVel);
+                } else {
+                    angularJoyVel = 0;
+                    linearJoyVel = 0;
+                    this.moveTurtleBot(angularJoyVel, linearJoyVel);
+
+                }
+                //moveTurtleBot(angularJoyVel,linearJoyVel);
+            }
+            this.moveTurtleBot(angularJoyVel, linearJoyVel);
+
+            //Fleches
+
+            const leftRightArrow = gp.axes[6];
+            const upDownArrow = gp.axes[7];
+
+            if (leftRightArrow >= stickDeadZone) {
+                console.log("droit !");
+                this.rightPressed = true;
+            } else if (leftRightArrow <= -stickDeadZone) {
+                console.log("gauche !");
+                this.leftPressed = true;
+            } else if (upDownArrow >= stickDeadZone) {
+                console.log("bas !");
+                this.downPressed = true;
+            } else if (upDownArrow <= -stickDeadZone) {
+                console.log("haut !");
+                this.upPressed = true;
+            }
+
+
+
+
+
+
+            start = requestAnimationFrame(this.gameLoop);
+        }
+
+
+        window.addEventListener("gamepadconnected", (e) => {
+            const gp = navigator.getGamepads()[e.gamepad.index];
+            //gamepadInfo.textContent = `Gamepad connected at index ${gp.index}: ${gp.id}. It has ${gp.buttons.length} buttons and ${gp.axes.length} axes.`;
+            //interval = setInterval(gameLoop,500);
+            this.gameLoop();
+        });
+
 
 
         ////////////////////////////
