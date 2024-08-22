@@ -139,7 +139,7 @@
                 <canvas id="ros-camera-canvas" width="300" height="300"></canvas>
             </div>-->
             <div id="videoContainer">
-                <img id="videoStream" src="http://localhost:8080/stream?topic=/camera/image_raw" width="640" height="480" />
+                <img id="videoStream" src="http://localhost:8080/stream?topic=/camera/front/image_raw" width="640" height="480" />
             </div>
 
 
@@ -238,7 +238,7 @@
     <script>
         // ROS2 topic names
         const TOPIC_DRIVE = "cmd_vel/geometry_msgs::msg::dds_::Twist_/RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a";
-        const TOPIC_LIDAR = "scan/sensor_msgs::msg::dds_::LaserScan_/RIHS01_64c191398013af96509d518dac71d5164f9382553fce5c1f8cca5be7924bd828";
+        const TOPIC_LIDAR = "laser/sensor_msgs::msg::dds_::LaserScan_/RIHS01_64c191398013af96509d518dac71d5164f9382553fce5c1f8cca5be7924bd828";
         const TOPIC_BATTERY = "battery_state";
         const TOPIC_LOGS = "chatter/std_msgs::msg::dds_::String_/RIHS01_df668c740482bbd48fb39d76a70dfd4bd59db1288021743503259e948f6b1a18";
 
@@ -306,6 +306,7 @@
             //var angular_scale = document.getElementById("angular_scale").value
             var linear_scale = 10.0
             var angular_scale = 5.0
+            console.log("DEBUG : linear_scale = " + linear + " angular_scale = " + angular);
 
             // Create a Twist message
             var twist = new Twist(
@@ -371,7 +372,30 @@
 
         //fonction de deplacement du robot avec le joystick physique
         function moveTurtleBot(linearVelocity, angularVelocity) {
-            pubTwist(linearVelocity, angularVelocity);
+             // Get scales from HTML
+            //var linear_scale = document.getElementById("linear_scale").value
+            //var angular_scale = document.getElementById("angular_scale").value
+           // var linear_scale = 10.0
+            //var angular_scale = 5.0
+
+            // Create a Twist message
+            console.log("DEBUG : linear_scale = " + linearVelocity + " angular_scale = " + angularVelocity);
+            var twist = new Twist(
+                new Vector3(linearVelocity*0.5, 0.0, 0.0),
+                new Vector3(0.0, 0.0, angularVelocity*0.5));
+            console.log(twist);
+            // Since it's going to DDS, encode it using a jscdr.CDRWriter
+            var writer = new jscdr.CDRWriter();
+            twist.encode(writer);
+
+            // The key expression for publication
+            var key_expr = scope + TOPIC_DRIVE;
+            console.log("Send cmd_vel to " + rest_api + key_expr);
+
+            // PUT it to zenoh via its REST API
+            Http.open('PUT', rest_api + key_expr, true);
+            Http.setRequestHeader('Content-Type', 'application/octet-stream');
+            Http.send(writer.buf.buffer);
 
         }
 
@@ -435,7 +459,7 @@
 
 
             //joystick gauche
-            const stickDeadZone = 0.4;
+            const stickDeadZone = 0.1;
             const leftRightValue = gp.axes[0];
             const upDownValue = gp.axes[1];
 
@@ -446,7 +470,7 @@
 
 
 
-
+            leftRightValue
             //avec sécurité mais moins propre
             if (this.buttonPressed(gp.buttons[5], true)) { //RB
                 console.log("RB");
@@ -479,7 +503,7 @@
                     angularJoyVel = -droitleftRightValue + stickDeadZone + 0.15;
                     this.moveTurtleBot(linearJoyVel, angularJoyVel);
 
-                } else if (droitleftRightValue <= -stickDeadZone) {
+                } /*else if (droitleftRightValue <= -stickDeadZone) {
                     console.log("gauche !");
                     angularJoyVel = -droitleftRightValue - stickDeadZone - 0.15;
                     this.moveTurtleBot(linearJoyVel, angularJoyVel);
@@ -492,16 +516,18 @@
                     console.log("haut !");
                     linearJoyVel = -droitupDownValue - stickDeadZone - 0.15;
                     this.moveTurtleBot(linearJoyVel, angularJoyVel);
-                } else {
+                }*/ else {
                     angularJoyVel = 0;
                     linearJoyVel = 0;
                     this.moveTurtleBot(angularJoyVel, linearJoyVel);
 
                 }
                 //moveTurtleBot(angularJoyVel,linearJoyVel);
+                console.log("joy :leftRight : " + leftRightValue + " updown : " + upDownValue);
+                this.moveTurtleBot(angularJoyVel, linearJoyVel);
             }
-            this.moveTurtleBot(angularJoyVel, linearJoyVel);
 
+            
             //Fleches
 
             const leftRightArrow = gp.axes[6];
