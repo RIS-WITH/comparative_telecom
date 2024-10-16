@@ -139,7 +139,8 @@
                 <canvas id="ros-camera-canvas" width="300" height="300"></canvas>
             </div>-->
             <div id="videoContainer">
-                <img id="videoStream" src="http://localhost:8080/stream?topic=/camera/front/image_raw" width="640" height="480" />
+                <!-- <img id="videoStream" src="http://localhost:8080/stream?topic=/camera/image_raw" width="640" height="480" /> -->
+                <img id="videoStream" src="http://140.93.5.161:8080/stream?topic=/camera/front/image_raw" width="640" height="480" />
             </div>
 
 
@@ -239,15 +240,17 @@
         // ROS2 topic names
         const TOPIC_DRIVE = "cmd_vel/geometry_msgs::msg::dds_::Twist_/RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a";
         const TOPIC_LIDAR = "laser/sensor_msgs::msg::dds_::LaserScan_/RIHS01_64c191398013af96509d518dac71d5164f9382553fce5c1f8cca5be7924bd828";
-        const TOPIC_BATTERY = "battery_state";
+        // const TOPIC_LIDAR = "scan/sensor_msgs::msg::dds_::LaserScan_/RIHS01_64c191398013af96509d518dac71d5164f9382553fce5c1f8cca5be7924bd828";
+        // const TOPIC_BATTERY = "battery_state";
         const TOPIC_LOGS = "chatter/std_msgs::msg::dds_::String_/RIHS01_df668c740482bbd48fb39d76a70dfd4bd59db1288021743503259e948f6b1a18";
 
         // MQTT topic name (for logging)
-        const TOPIC_MQTT = "zigbee2mqtt/device/**"
+        // const TOPIC_MQTT = "zigbee2mqtt/device/**"
 
          // The REST API URL and scope
 
-         const rest_api = "http://localhost:8800/";
+        //  const rest_api = "http://kirito-dock.laas.fr:8800/";
+         const rest_api = "http://140.93.5.161:8800/";
         const scope = "0/";
 
         const sub_scope = scope;
@@ -439,7 +442,7 @@
                 console.log("LB");
 
             }
-            if (this.buttonPressed(gp.buttons[5])) { //RB
+            if (this.buttonPressed(gp.buttons[18])) { //RB
                 console.log("RB");
 
             }
@@ -472,7 +475,7 @@
 
             leftRightValue
             //avec sécurité mais moins propre
-            if (this.buttonPressed(gp.buttons[5], true)) { //RB
+            if (this.buttonPressed(gp.buttons[18], true)) { //RB
                 console.log("RB");
 
 
@@ -568,34 +571,34 @@
         ////////////////////////////
         //  Battery subscription  //
         ////////////////////////////
-        var battery_source = null;
+        // var battery_source = null;
 
-        // Test if Server-Source Event is supported
-        if (typeof (EventSource) !== "undefined") {
-            // the key expression to subscribe
-            var key_expr = sub_scope + TOPIC_BATTERY;
+        // // Test if Server-Source Event is supported
+        // if (typeof (EventSource) !== "undefined") {
+        //     // the key expression to subscribe
+        //     var key_expr = sub_scope + TOPIC_BATTERY;
 
-            // Create EventSource for subscription to key_expr
-            console.log("Subscribe to EventSource: " + rest_api + key_expr);
-            battery_source = new EventSource(rest_api + key_expr);
-            battery_source.addEventListener("PUT", function (e) {
-                console.log("Received sample: " + e.data);
-                // The zenoh REST API sends JSON objects
-                // that includes "key", "value", "encoding" and "time" (same than a result to GET)
-                let sample = JSON.parse(e.data)
-                // The payload buffer is in "value" field, encoded as base64.
-                // Since it's comming from DDS, we decode it using a jscdr.CDRReader.
-                let reader = new jscdr.CDRReader(dcodeIO.ByteBuffer.fromBase64(sample.value));
-                // Decode the buffer as a BatteryState message
-                let battery = BatteryState.decode(reader);
-                // Set it to "battery" HTML element
-                let elem = document.getElementById("battery_label");
-                elem.innerHTML = "Battery: " + Math.round(battery.percentage) + " %";
-            }, false);
+        //     // Create EventSource for subscription to key_expr
+        //     console.log("Subscribe to EventSource: " + rest_api + key_expr);
+        //     battery_source = new EventSource(rest_api + key_expr);
+        //     battery_source.addEventListener("PUT", function (e) {
+        //         console.log("Received sample: " + e.data);
+        //         // The zenoh REST API sends JSON objects
+        //         // that includes "key", "value", "encoding" and "time" (same than a result to GET)
+        //         let sample = JSON.parse(e.data)
+        //         // The payload buffer is in "value" field, encoded as base64.
+        //         // Since it's comming from DDS, we decode it using a jscdr.CDRReader.
+        //         let reader = new jscdr.CDRReader(dcodeIO.ByteBuffer.fromBase64(sample.value));
+        //         // Decode the buffer as a BatteryState message
+        //         let battery = BatteryState.decode(reader);
+        //         // Set it to "battery" HTML element
+        //         let elem = document.getElementById("battery_label");
+        //         elem.innerHTML = "Battery: " + Math.round(battery.percentage) + " %";
+        //     }, false);
 
-        } else {
-            document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
-        }
+        // } else {
+        //     document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
+        // }
 
         //////////////////////////////////////////////////////////////////
         //  Camera subscription (as motion-JPEG via WebService plugin)  //
@@ -872,69 +875,69 @@
         //////////////////////////////////
         //    Logs subscription (ROS2)  //
         //////////////////////////////////
-        var ros2_logs_source = null;
+        // var ros2_logs_source = null;
 
-        // Test if Server-Source Event is supported
-        if (typeof (EventSource) !== "undefined") {
-            // the key expression to subscribe
-            var key_expr = sub_scope + TOPIC_LOGS;
+        // // Test if Server-Source Event is supported
+        // if (typeof (EventSource) !== "undefined") {
+        //     // the key expression to subscribe
+        //     var key_expr = sub_scope + TOPIC_LOGS;
 
-            // update Lidar label
-            //let elem = document.getElementById("logs_label");
-            //elem.innerHTML = "Logs ( " + key_expr + " + " + TOPIC_MQTT + " )";
+        //     // update Lidar label
+        //     //let elem = document.getElementById("logs_label");
+        //     //elem.innerHTML = "Logs ( " + key_expr + " + " + TOPIC_MQTT + " )";
 
-            // Create EventSource for subscription to key_expr
-            console.log("Subscribe to EventSource: " + rest_api + key_expr);
-            ros2_logs_source = new EventSource(rest_api + key_expr);
-            ros2_logs_source.addEventListener("PUT", function (e) {
-                console.log("Received sample: " + e.data);
-                // The zenoh REST API sends JSON objects
-                // that includes "key", "value", "encoding" and "time" (same than a result to GET)
-                let sample = JSON.parse(e.data)
-                // The payload buffer is in "value" field, encoded as base64.
-                // Since it's comming from DDS, we decode it using a jscdr.CDRReader.
-                let reader = new jscdr.CDRReader(dcodeIO.ByteBuffer.fromBase64(sample.value));
-                // Decode the buffer as a Log message
-                let log = String.decode(reader);
-                // Add it to "rosout_logs" HTML element
-                let elem = document.getElementById("rosout_logs");
-                // elem.innerHTML += "ROS2: [" + log.time.sec + "." + log.time.nsec + "] [" + log.name + "]: " + log.msg + "<br>";
-                elem.innerHTML += "ROS2: " + log.data + "<br>";
-                // Auto-scroll to the bottom
-                elem.scrollTop = elem.scrollHeight;
-            }, false);
+        //     // Create EventSource for subscription to key_expr
+        //     console.log("Subscribe to EventSource: " + rest_api + key_expr);
+        //     ros2_logs_source = new EventSource(rest_api + key_expr);
+        //     ros2_logs_source.addEventListener("PUT", function (e) {
+        //         console.log("Received sample: " + e.data);
+        //         // The zenoh REST API sends JSON objects
+        //         // that includes "key", "value", "encoding" and "time" (same than a result to GET)
+        //         let sample = JSON.parse(e.data)
+        //         // The payload buffer is in "value" field, encoded as base64.
+        //         // Since it's comming from DDS, we decode it using a jscdr.CDRReader.
+        //         let reader = new jscdr.CDRReader(dcodeIO.ByteBuffer.fromBase64(sample.value));
+        //         // Decode the buffer as a Log message
+        //         let log = String.decode(reader);
+        //         // Add it to "rosout_logs" HTML element
+        //         let elem = document.getElementById("rosout_logs");
+        //         // elem.innerHTML += "ROS2: [" + log.time.sec + "." + log.time.nsec + "] [" + log.name + "]: " + log.msg + "<br>";
+        //         elem.innerHTML += "ROS2: " + log.data + "<br>";
+        //         // Auto-scroll to the bottom
+        //         elem.scrollTop = elem.scrollHeight;
+        //     }, false);
 
-        } else {
-            document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
-        }
+        // } else {
+        //     document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
+        // }
 
         //////////////////////////////////
         //    Logs subscription (MQTT)  //
         //////////////////////////////////
-        var mqtt_logs_source = null;
+        // var mqtt_logs_source = null;
 
-        // Test if Server-Source Event is supported
-        if (typeof (EventSource) !== "undefined") {
-            // the key expression to subscribe (no scope used by MQTT bridge as only 1)
-            var key_expr = TOPIC_MQTT;
+        // // Test if Server-Source Event is supported
+        // if (typeof (EventSource) !== "undefined") {
+        //     // the key expression to subscribe (no scope used by MQTT bridge as only 1)
+        //     var key_expr = TOPIC_MQTT;
 
-            console.log("Subscribe to EventSource: " + rest_api + key_expr);
-            ros2_logs_source = new EventSource(rest_api + key_expr);
-            ros2_logs_source.addEventListener("PUT", function (e) {
-                console.log("Received sample: " + e.data);
-                // The zenoh REST API sends JSON objects
-                // that includes "key", "value", "encoding" and "time" (same than a result to GET)
-                let sample = JSON.parse(e.data)
-                // Add it to "rosout_logs" HTML element
-                let elem = document.getElementById("rosout_logs");
-                elem.innerHTML += "MQTT: on " + sample.key + " : " + JSON.stringify(sample.value) + "<br>";
-                // Auto-scroll to the bottom
-                elem.scrollTop = elem.scrollHeight;
-            }, false);
+        //     console.log("Subscribe to EventSource: " + rest_api + key_expr);
+        //     ros2_logs_source = new EventSource(rest_api + key_expr);
+        //     ros2_logs_source.addEventListener("PUT", function (e) {
+        //         console.log("Received sample: " + e.data);
+        //         // The zenoh REST API sends JSON objects
+        //         // that includes "key", "value", "encoding" and "time" (same than a result to GET)
+        //         let sample = JSON.parse(e.data)
+        //         // Add it to "rosout_logs" HTML element
+        //         let elem = document.getElementById("rosout_logs");
+        //         elem.innerHTML += "MQTT: on " + sample.key + " : " + JSON.stringify(sample.value) + "<br>";
+        //         // Auto-scroll to the bottom
+        //         elem.scrollTop = elem.scrollHeight;
+        //     }, false);
 
-        } else {
-            document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
-        }
+        // } else {
+        //     document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
+        // }
 
 
         /////////////////////////////////////////////////////////////

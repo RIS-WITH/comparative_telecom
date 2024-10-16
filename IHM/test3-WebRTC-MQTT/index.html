@@ -93,10 +93,10 @@
         var remotePeerConnection;
         var dataChannel;
         var localStream;
-        var signalingServer = new WebSocket('ws://localhost:9090');
+        var signalingServer = new WebSocket('ws://raikou.laas.fr:8188');
 
         // Configurez le client MQTT
-        const mqttClient = mqtt.connect('ws://localhost:1884');
+        const mqttClient = mqtt.connect('mqtt://raikou.laas.fr');
 
         mqttClient.on('connect', () => {
             console.log('Connected to MQTT broker');
