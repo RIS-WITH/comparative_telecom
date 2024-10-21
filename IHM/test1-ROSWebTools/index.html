@@ -91,7 +91,7 @@
         // Connecting to ROS
         // -----------------
         var ros = new ROSLIB.Ros({
-            url: 'ws://kirito-dock:9999'
+            url: 'ws://yunobo:9090'
         });
 
         ros.on('connection', function () {
@@ -106,21 +106,136 @@
             console.log('Connection to websocket server closed.');
         });
 
+        /// Maximum size for commandTimestamps
+        const MAX_COMMANDS = 100000;
+
+        // Use Map to preserve insertion order
+        let commandTimestamps = new Map();
+
+        // Function to trim the Map when it exceeds the maximum size
+        function trimCommandTimestamps() {
+            if (commandTimestamps.size > MAX_COMMANDS) {
+                const oldestCommandId = commandTimestamps.keys().next().value;  // Get the first inserted command (oldest)
+                commandTimestamps.delete(oldestCommandId);  // Remove the oldest command
+                console.log('Deleted oldest command ID: ' + oldestCommandId);
+            }
+        }
+
+        // Topic to get all T1-T5 of the command sent
+        var cmdVelTimeStamps = new ROSLIB.Topic({
+            ros: ros,
+            name: '/cmd_vel_time_stamp',
+            messageType: 'std_msgs/UInt64MultiArray'
+        });
+
+        cmdVelTimeStamps.subscribe(function (message) {
+            var commandId = message.data[0];
+            var timestampIndex = message.data[1];
+            var timestampValue = message.data[2];
+            console.log('Received ' + commandId + ' command timestamp ' + timestampIndex + ': ' + timestampValue);
+
+            // Initialize commandTimestamps entry if not present
+            if (!commandTimestamps.has(commandId)) {
+                commandTimestamps.set(commandId, { T1: null, T2: null, T3: null, T4: null, T5: null, T6: null });
+            }
+
+            // Update the corresponding timestamp
+            commandTimestamps.get(commandId)['T' + timestampIndex] = timestampValue;
+        });
+
+        // Subscribe to the temp completion topic
+        var tempCompletion = new ROSLIB.Topic({
+            ros: ros,
+            name: '/temp_completion',
+            messageType: 'std_msgs/UInt64'
+        });
+
+        tempCompletion.subscribe(function (message) {
+            var commandId = message.data;
+            console.log('Received temp completion for command ' + commandId);
+
+            // Add T6 to the command
+            if (commandTimestamps.has(commandId)) {
+                commandTimestamps.get(commandId)['T6'] = getCurrentTime();
+            }
+            // Trim the commandTimestamps map if it exceeds the max size
+            trimCommandTimestamps();
+        });
+
+        // Download the commandTimestamps as a CSV file
+        function downloadCommandTimestamps() {
+            var csv = 'T0,T1,T2,T3,T4,T5,T6\n';
+            commandTimestamps.forEach((timestamps, commandId) => {
+                csv += commandId + ',' + timestamps['T1'] + ',' + timestamps['T2'] + ',' + timestamps['T3'] + ',' + timestamps['T4'] + ',' + timestamps['T5'] + ',' + timestamps['T6'] + '\n';
+            });
+            var hiddenElement = document.createElement('a');
+            hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            hiddenElement.target = '_blank';
+            hiddenElement.download = 'commandTimestamps.csv';
+            hiddenElement.click();
+        }
+
+        function testSimulateCommandclicks() {
+            var commands = [
+                { linear: 1.0, angular: 0.0 },
+                { linear: 0.0, angular: 1.0 },
+                { linear: -1.0, angular: 0.0 },
+                { linear: 0.0, angular: -1.0 },
+                { linear: 0.0, angular: 0.0 }
+            ];
+
+            // Simulate commands for 5 minutes
+            var startTime = getCurrentTime();
+            var interval = setInterval(function () {
+                var currentTime = getCurrentTime();
+                if (currentTime - startTime > 300000) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                var randomIndex = Math.floor(Math.random() * commands.length);
+                var command = commands[randomIndex];
+                move(command.linear, command.angular);
+            }, 60); // Google Chrome record of clicks per second 14.1 which is 70.9ms per click
+        }
+
+
         // Publishing a Topic
-        // ------------------
         var cmdVel = new ROSLIB.Topic({
             ros: ros,
             name: '/cmd_vel',
-            messageType: 'geometry_msgs/Twist'
+            messageType: 'geometry_msgs/TwistStamped'
         });
 
+        function getCurrentTime() {
+            return new Date().getTime();
+        }
+
+        // Send command to robot with T0 timestamp
         function move(linear, angular) {
-            var twist = new ROSLIB.Message({
-                linear: { x: linear },
-                angular: { z: angular }
-            });
+            var T0 = getCurrentTime();
+            var commandId = T0.toString();  // Generate command ID from T0
+            console.log('Sending command ' + commandId + ': linear=' + linear + ', angular=' + angular);
+            var twist = {
+                header: {
+                    stamp: {
+                        secs: Math.floor(T0 / 1000),
+                        nsecs: (T0 % 1000) * 1000000
+                    },
+                    frame_id: ''
+                },
+                twist: {
+                    linear: { x: linear },
+                    angular: { z: angular }
+                }
+            };
+
+            console.log('Sending command: ' + JSON.stringify(twist));
             cmdVel.publish(twist);
-        };
+
+            // Trim the commandTimestamps map if it exceeds the max size
+            trimCommandTimestamps();
+        }
 
         // Subscribing to a Topic
         // ----------------------
@@ -280,6 +395,9 @@
             </div>
         </div>
     </div>
+
+    <button onclick="testSimulateCommandclicks()">Test Simulate Command Clicks</button>
+    <button onclick="downloadCommandTimestamps()">Download Command Timestamps</button>
 </body>
 
 </html>
