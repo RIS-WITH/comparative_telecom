@@ -91,7 +91,7 @@
         // Connecting to ROS
         // -----------------
         var ros = new ROSLIB.Ros({
-            url: 'ws://yunobo:9090'
+            url: 'ws://140.93.6.33:9090'
         });
 
         ros.on('connection', function () {
@@ -156,7 +156,8 @@
 
             // Add T6 to the command
             if (commandTimestamps.has(commandId)) {
-                commandTimestamps.get(commandId)['T6'] = getCurrentTime();
+                commandTimestamps.get(commandId)['T6'] = new Date().getTime() * 1000000;  // Current time in nanoseconds
+                console.log('Added T6 to command ' + commandId + ': ' + commandTimestamps.get(commandId)['T6']);
             }
             // Trim the commandTimestamps map if it exceeds the max size
             trimCommandTimestamps();
@@ -185,10 +186,10 @@
             ];
 
             // Simulate commands for 5 minutes
-            var startTime = getCurrentTime();
+            var startTime = getCurrentTime().sec;
             var interval = setInterval(function () {
-                var currentTime = getCurrentTime();
-                if (currentTime - startTime > 300000) {
+                var currentTime = getCurrentTime().sec;
+                if (currentTime - startTime > 300) {
                     clearInterval(interval);
                     return;
                 }
@@ -199,6 +200,15 @@
             }, 60); // Google Chrome record of clicks per second 14.1 which is 70.9ms per click
         }
 
+        // Get the current time in milliseconds
+        function getCurrentTime() {
+            var time_ms = new Date().getTime();
+            // transform to ros time sec and nsec
+            return {
+                sec: Math.floor(time_ms / 1000),
+                nsec: (time_ms % 1000) * 1000000
+            };
+        }  
 
         // Publishing a Topic
         var cmdVel = new ROSLIB.Topic({
@@ -207,20 +217,15 @@
             messageType: 'geometry_msgs/TwistStamped'
         });
 
-        function getCurrentTime() {
-            return new Date().getTime();
-        }
-
         // Send command to robot with T0 timestamp
         function move(linear, angular) {
-            var T0 = getCurrentTime();
-            var commandId = T0.toString();  // Generate command ID from T0
-            console.log('Sending command ' + commandId + ': linear=' + linear + ', angular=' + angular);
+            var T = getCurrentTime();
+            console.log('Sending command ' + T.sec + '.' + T.nsec + ': linear=' + linear + ', angular=' + angular);
             var twist = {
                 header: {
                     stamp: {
-                        secs: Math.floor(T0 / 1000),
-                        nsecs: (T0 % 1000) * 1000000
+                        secs: T.sec,
+                        nsecs: T.nsec
                     },
                     frame_id: ''
                 },
