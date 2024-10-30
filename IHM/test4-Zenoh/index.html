@@ -230,7 +230,7 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/bytebuffer@5.0.1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jscdr@0.0.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jscdr@0.0.3/dist/index.umd.js"></script>
     <script>
         // ROS2 topic names
         const TOPIC_DRIVE = "cmd_vel/geometry_msgs::msg::dds_::Twist_/RIHS01_9c45bf16fe0983d80e3cfe750d6835843d265a9a6c46bd2e609fcddde6fb8d2a";
@@ -243,8 +243,8 @@
 
         // The REST API URL and scope
 
-        const rest_api = "http://kirito-dock.laas.fr:8800/";
-        const scope = "0/";
+        const rest_api = "http://140.93.6.33:8800/";
+        const scope = "3/";
 
         const sub_scope = scope;
 
@@ -714,28 +714,18 @@
             var input = document.getElementById('messageInput');
             message = input.value;
             console.log("Send message: " + message);
-            const url = rest_api + sub_scope + "chatter";
+            const url = rest_api + sub_scope + TOPIC_LOGS;
 
-            
-            fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ data: message })
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok ' + response.statusText);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log("Message sent successfully:", data);
-                })
-                .catch(error => {
-                    console.error("There was a problem with the fetch operation:", error);
-                });
+            // Create a String message
+            var str = new String(message);
+
+            // Since it's going to Zenoh, encode it using a jscdr.CDRWriter
+            var writer = new jscdr.CDRWriter();
+            str.encode(writer);
+            // PUT it to zenoh via its REST API
+            Http.open('PUT', url, true);
+            Http.setRequestHeader('Content-Type', 'application/octet-stream');
+            Http.send(writer.buf.buffer);
         }
 
       
@@ -822,6 +812,11 @@
                 let data = cdrReader.readString();
                 return new String(data);
             }
+
+            encode(cdrWriter) {
+                cdrWriter.writeString(this.data);
+            }
+
         }
 
         // ROS2 Vector3 type
