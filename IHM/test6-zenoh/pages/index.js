@@ -16,8 +16,9 @@ const ChatInterface = () => {
     encode(cdrWriter) {
       cdrWriter.string(this.data);
     }
-  }
 
+    
+  }
   
   useEffect(() => {
     // Set up the EventSource for message subscription
@@ -49,7 +50,7 @@ const ChatInterface = () => {
     const writer = new CdrWriter();
     const message = new String(messageInput);
     message.encode(writer);
-    const encodedMessage = message.data;
+    const encodedMessage = writer.data;
 
     fetch(url, {
       method: 'PUT',
