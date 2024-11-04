@@ -11,7 +11,7 @@ const TeleopInterface = () => {
   const scope = "3/";
   const TOPIC_DRIVE = "cmd_vel/geometry_msgs::msg::dds_::TwistStamped_/RIHS01_5f0fcd4f81d5d06ad9b4c4c63e3ea51b82d6ae4d0558f1d475229b1121db6f64";
   const TOPIC_CHAT = "chatter/std_msgs::msg::dds_::String_/RIHS01_df668c740482bbd48fb39d76a70dfd4bd59db1288021743503259e948f6b1a18";
-  const TOPIC_TIMESTAMP = "cmd_vel_time_stamp/std_msgs::msg::dds_::UInt64MultiArray_/RIHS01_fc1c685c2f76bdc6983da025cb25d2db5fb5157b059e300f6d957d86f981b366";
+  const TOPIC_TIMESTAMP = "cmd_vel_time_stamp/interfaces::msg::dds_::CommandTimestamp_/RIHS01_ff56d63f170881d1222138d1dc80184879835e4160323aff37c33a885c6eaa84";
   const TOPIC_COMMAND_COMPLETION = "temp_completion/std_msgs::msg::dds_::UInt64_/RIHS01_fbdc52018fc13755dce18024d1a671c856aa8b4aaf63adfb095b608f98e8c943"
   const MAX_COMMANDS = 100000;
   const [commandTimestamps, setCommandTimestamps] = useState(new Map());
@@ -125,28 +125,25 @@ const TeleopInterface = () => {
     }
   }
 
-  class UInt64MultiArray {
-    constructor(data) {
-      this.data = data;
+  class CommandTimestamp {
+    constructor(command_id, timestamp_index, timestamp) {
+      this.command_id = command_id;
+      this.timestamp_index = timestamp_index;
+      this.timestamp = timestamp;
     }
     static decode(cdrReader) {
-      const data = [];
-      const t = cdrReader.uint32();
-      const length = 3;
-      
-      for (let i = 0; i < length; i++) {
-      data.push(cdrReader.uint64());
-      }
-      return new UInt64MultiArray(data);
+      const command_id = cdrReader.uint64();
+      const timestamp_index = cdrReader.uint64();
+      const timestamp = cdrReader.uint64();
+      return new CommandTimestamp(command_id, timestamp_index, timestamp);
     }
     encode(cdrWriter) {
-      cdrWriter.uint32(this.data.length);
-      for (const item of this.data) {
-      cdrWriter.uint64(item);
-      }
+      cdrWriter.uint64(this.command_id);
+      cdrWriter.uint64(this.timestamp_index);
+      cdrWriter.uint64(this.timestamp);
     }
   }
-  
+
   useEffect(() => {
     const chatUrl = rest_api + scope + TOPIC_CHAT;
     const chatEventSource = new EventSource(chatUrl);
@@ -170,12 +167,12 @@ const TeleopInterface = () => {
     timestampEventSource.addEventListener("PUT", (e) => {
       const sample = JSON.parse(e.data);
       console.log('Received timestamp: ' + sample['value']);
-      const reader = new CdrReader(Uint8Array.from(atob(sample['value']), c => c.charCodeAt(0)));
-      const receivedTimestamp = UInt64MultiArray.decode(reader).data;
-      console.log('Received timestamp: ' + receivedTimestamp);
-      const commandId = receivedTimestamp[0];
-      const commandTimestampIndex = receivedTimestamp[1];
-      const commandTimestamp = receivedTimestamp[2];
+      const buffer = Buffer.from(sample["value"], "base64");
+      const reader = new CdrReader(buffer);
+      const receivedTimestamp = CommandTimestamp.decode(reader);
+      const commandId = receivedTimestamp.command_id;
+      const commandTimestampIndex = receivedTimestamp.timestamp_index;
+      const commandTimestamp = receivedTimestamp.timestamp;
       console.log('Received command ID: ' + commandId + ', timestamp index: ' + commandTimestampIndex + ', timestamp: ' + commandTimestamp);
       setCommandTimestamps(prev => {
         const updated = new Map(prev);
@@ -198,14 +195,16 @@ const TeleopInterface = () => {
 
     commandCompletionEventSource.addEventListener("PUT", (e) => {
       const sample = JSON.parse(e.data);
-      const reader = new CdrReader(Uint8Array.from(atob(sample['value']), c => c.charCodeAt(0)));
+      console.log('Received command completion: ' + sample['value']);
+      const buffer = Buffer.from(sample["value"], "base64");
+      const reader = new CdrReader(buffer);
       const receivedCommandId = UInt64.decode(reader).data;
       console.log('Received command completion ID: ' + receivedCommandId);
       setCommandTimestamps(prev => {
         const updated = new Map(prev);
-        if (updated.has(commandId)) {
-          updated.get(commandId).T6 = Date.now() * 1000000; // Current time in nanoseconds
-          console.log(`Added T6 to command ${commandId}: ${updated.get(commandId).T6}`);
+        if (updated.has(receivedCommandId)) {
+          updated.get(receivedCommandId).T6 = Date.now() * 1000000; // Current time in nanoseconds
+          console.log(`Added T6 to command ${receivedCommandId}: ${updated.get(receivedCommandId).T6}`);
         }
         trimCommandTimestamps();
         return updated;
@@ -290,7 +289,7 @@ const TeleopInterface = () => {
       const randomIndex = Math.floor(Math.random() * commands.length);
       const command = commands[randomIndex];
       pubTwistStamped(command.linear, command.angular);
-    }, 60); // Interval set for Chrome click recording
+    }, 1000); // Interval set for Chrome click recording
   };
 
   const pubTwistStamped = (linear, angular) => {
@@ -391,7 +390,6 @@ const TeleopInterface = () => {
           <table>
             <thead>
               <tr>
-                <th>Command ID</th>
                 <th>T0</th>
                 <th>T1</th>
                 <th>T2</th>

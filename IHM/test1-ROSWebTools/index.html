@@ -125,13 +125,13 @@
         var cmdVelTimeStamps = new ROSLIB.Topic({
             ros: ros,
             name: '/cmd_vel_time_stamp',
-            messageType: 'std_msgs/UInt64MultiArray'
+            messageType: 'interfaces/msg/CommandTimestamp' // Custom message type
         });
 
         cmdVelTimeStamps.subscribe(function (message) {
-            var commandId = message.data[0];
-            var timestampIndex = message.data[1];
-            var timestampValue = message.data[2];
+            var commandId = message.command_id;
+            var timestampIndex = message.timestamp_index;
+            var timestampValue = message.timestamp;
             console.log('Received ' + commandId + ' command timestamp ' + timestampIndex + ': ' + timestampValue);
 
             // Initialize commandTimestamps entry if not present
