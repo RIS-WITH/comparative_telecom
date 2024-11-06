@@ -132,7 +132,7 @@
             var commandId = message.command_id;
             var timestampIndex = message.timestamp_index;
             var timestampValue = message.timestamp;
-            console.log('Received ' + commandId + ' command timestamp ' + timestampIndex + ': ' + timestampValue);
+            //console.log('Received ' + commandId + ' command timestamp ' + timestampIndex + ': ' + timestampValue);
 
             // Initialize commandTimestamps entry if not present
             if (!commandTimestamps.has(commandId)) {
@@ -147,17 +147,20 @@
         var tempCompletion = new ROSLIB.Topic({
             ros: ros,
             name: '/temp_completion',
-            messageType: 'std_msgs/UInt64'
+            messageType: 'std_msgs/Int64'
         });
 
         tempCompletion.subscribe(function (message) {
+            var currentTimeNs = new Date().getTime() * 1000000;  // Current time in nanoseconds
             var commandId = message.data;
-            console.log('Received temp completion for command ' + commandId);
-
             // Add T6 to the command
             if (commandTimestamps.has(commandId)) {
-                commandTimestamps.get(commandId)['T6'] = new Date().getTime() * 1000000;  // Current time in nanoseconds
-                console.log('Added T6 to command ' + commandId + ': ' + commandTimestamps.get(commandId)['T6']);
+                commandTimestamps.get(commandId)['T6'] = currentTimeNs;
+                //console.log('Received completion for command ' + commandId + ' at ' + currentTimeNs);
+            }else{
+                // Initialize commandTimestamps entry if not present
+                commandTimestamps.set(commandId, { T1: null, T2: null, T3: null, T4: null, T5: null, T6: currentTimeNs });
+                //console.log('Received completion for command ' + commandId + ' at ' + currentTimeNs);
             }
             // Trim the commandTimestamps map if it exceeds the max size
             trimCommandTimestamps();
@@ -178,26 +181,34 @@
 
         function testSimulateCommandclicks() {
             var commands = [
-                { linear: 1.0, angular: 0.0 },
-                { linear: 0.0, angular: 1.0 },
-                { linear: -1.0, angular: 0.0 },
-                { linear: 0.0, angular: -1.0 },
-                { linear: 0.0, angular: 0.0 }
+            { linear: 1.0, angular: 0.0 },
+            { linear: 0.0, angular: 1.0 },
+            { linear: -1.0, angular: 0.0 },
+            { linear: 0.0, angular: -1.0 },
+            { linear: 0.0, angular: 0.0 }
             ];
+
+            var testButton = document.querySelector('button[onclick="testSimulateCommandclicks()"]');
+            testButton.style.backgroundColor = 'orange';
+            testButton.disabled = true;
+            console.log('Test simulation of command clicks started.');
 
             // Simulate commands for 5 minutes
             var startTime = getCurrentTime().sec;
             var interval = setInterval(function () {
-                var currentTime = getCurrentTime().sec;
-                if (currentTime - startTime > 300) {
-                    clearInterval(interval);
-                    return;
-                }
+            var currentTime = getCurrentTime().sec;
+            if (currentTime - startTime > 300) {
+                clearInterval(interval);
+                testButton.style.backgroundColor = '';
+                testButton.disabled = false;
+                console.log('Test simulation of command clicks finished.');
+                return;
+            }
 
-                var randomIndex = Math.floor(Math.random() * commands.length);
-                var command = commands[randomIndex];
-                move(command.linear, command.angular);
-            }, 60); // Google Chrome record of clicks per second 14.1 which is 70.9ms per click
+            var randomIndex = Math.floor(Math.random() * commands.length);
+            var command = commands[randomIndex];
+            move(command.linear, command.angular);
+            }, 10); // Google Chrome record of clicks per second 14.1 which is 70.9ms per click
         }
 
         // Get the current time in milliseconds
@@ -220,7 +231,6 @@
         // Send command to robot with T0 timestamp
         function move(linear, angular) {
             var T = getCurrentTime();
-            console.log('Sending command ' + T.sec + '.' + T.nsec + ': linear=' + linear + ', angular=' + angular);
             var twist = {
                 header: {
                     stamp: {
@@ -234,12 +244,8 @@
                     angular: { z: angular }
                 }
             };
-
-            console.log('Sending command: ' + JSON.stringify(twist));
             cmdVel.publish(twist);
-
-            // Trim the commandTimestamps map if it exceeds the max size
-            trimCommandTimestamps();
+            //console.log('Sending command: ' + JSON.stringify(twist));
         }
 
         // Subscribing to a Topic
@@ -403,6 +409,7 @@
 
     <button onclick="testSimulateCommandclicks()">Test Simulate Command Clicks</button>
     <button onclick="downloadCommandTimestamps()">Download Command Timestamps</button>
+    <button onclick="trimCommandTimestamps()">Trim Command Timestamps</button>
 </body>
 
 </html>
