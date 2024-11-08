@@ -1,6 +1,8 @@
 # Comparative Telecom ...
 
-TODO List : 
+### regarder le fichier `IHM/ReadMe.md` pour savoir comment lancer les tests
+
+#### TODO List : 
 - Test2 WebRTC - MQTT 
 
     [ ] enlever l'envoie de la camera du site web et afficher uniquement la camera du robot 
