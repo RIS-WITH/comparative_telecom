@@ -179,37 +179,50 @@
             hiddenElement.click();
         }
 
-        function testSimulateCommandclicks() {
-            var commands = [
-            { linear: 1.0, angular: 0.0 },
-            { linear: 0.0, angular: 1.0 },
-            { linear: -1.0, angular: 0.0 },
-            { linear: 0.0, angular: -1.0 },
-            { linear: 0.0, angular: 0.0 }
+        const testSimulateCommandClicks = () => { // Notice the capital "C" in "Clicks"
+            const commands = [
+                { linear: 1.0, angular: 0.0 },
+                { linear: 0.0, angular: 1.0 },
+                { linear: -1.0, angular: 0.0 },
+                { linear: 0.0, angular: -1.0 },
+                { linear: 0.0, angular: 0.0 }
             ];
 
-            var testButton = document.querySelector('button[onclick="testSimulateCommandclicks()"]');
+            const startTime = Date.now();
+            const testButton = document.querySelector('button[onclick="testSimulateCommandClicks()"]');
             testButton.style.backgroundColor = 'orange';
             testButton.disabled = true;
             console.log('Test simulation of command clicks started.');
 
-            // Simulate commands for 5 minutes
-            var startTime = getCurrentTime().sec;
-            var interval = setInterval(function () {
-            var currentTime = getCurrentTime().sec;
-            if (currentTime - startTime > 300) {
-                clearInterval(interval);
-                testButton.style.backgroundColor = '';
-                testButton.disabled = false;
-                console.log('Test simulation of command clicks finished.');
-                return;
-            }
+            const simulateCommand = () => {
+                const elapsedTime = Date.now() - startTime;
 
-            var randomIndex = Math.floor(Math.random() * commands.length);
-            var command = commands[randomIndex];
-            move(command.linear, command.angular);
-            }, 10); // Google Chrome record of clicks per second 14.1 which is 70.9ms per click
-        }
+                // Stop the test after 30 minutes
+                if (elapsedTime > 1800000) {
+                if (testButton) {
+                    testButton.style.backgroundColor = ''; // Reset button color
+                    testButton.disabled = false;
+                }
+                return;
+                }
+
+                // Select a random command
+                const randomIndex = Math.floor(Math.random() * commands.length);
+                const command = commands[randomIndex];
+                move(command.linear, command.angular); // Publish the command
+
+                // Adjust interval timing based on elapsed time
+                let interval = 60; // Initial interval of 60ms
+                if (elapsedTime >= 1200000) interval = 10000; // After 20 min, set to 10s
+                else if (elapsedTime >= 600000) interval = 1000; // After 10 min, set to 1s
+
+                setTimeout(simulateCommand, interval); // Schedule the next command
+            };
+
+            // Start the initial command
+            simulateCommand();
+        };
+
 
         // Get the current time in milliseconds
         function getCurrentTime() {
@@ -407,7 +420,7 @@
         </div>
     </div>
 
-    <button onclick="testSimulateCommandclicks()">Test Simulate Command Clicks</button>
+    <button onclick="testSimulateCommandClicks()">Start Command Simulation</button>
     <button onclick="downloadCommandTimestamps()">Download Command Timestamps</button>
     <button onclick="trimCommandTimestamps()">Trim Command Timestamps</button>
 </body>
