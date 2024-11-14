@@ -21,36 +21,60 @@ const TeleopInterface = () => {
     const mqttClient = mqtt.connect(mqttSettings.url, mqttSettings.options);
     setClient(mqttClient);
 
-    mqttClient.on('connect', () => {
+    mqttClient.on('connect', async () => {
       console.log('connected to MQTT broker');
-      mqttClient.subscribe([TOPIC_CHAT, TOPIC_TIMESTAMP, TOPIC_COMMAND_COMPLETION], (err) => {
-        if (!err) {
+      try {
+        if (mqttClient.connected) {
+          await mqttClient.subscribeAsync([TOPIC_CHAT, TOPIC_TIMESTAMP, TOPIC_COMMAND_COMPLETION], { qos: 0 });
           console.log('subscribed to topics');
         }
-      });
+      } catch (err) {
+        console.error('Failed to subscribe to topics:', err);
+      }
     });
 
-    mqttClient.on('message', (topic, message) => {
-      const receivedMessage = message.toString();
-      if (topic === TOPIC_CHAT) {
-        setMessages((prevMessages) => [...prevMessages, `ROS2: ${receivedMessage}`]);
-      } else if (topic === TOPIC_TIMESTAMP) {
-        const receivedTimestamp = JSON.parse(receivedMessage);
-        //console.log(receivedTimestamp);
-        const commandId = receivedTimestamp.command_id;
-        const commandTimestampIndex = receivedTimestamp.timestamp_index;
-        const commandTimestamp = receivedTimestamp.timestamp;
-        if (!commandTimestamps.current.has(commandId)) {
-          commandTimestamps.current.set(commandId, { T1: null, T2: null, T3: null, T4: null, T5: null, T6: null });
-        }
-        commandTimestamps.current.get(commandId)['T' + commandTimestampIndex] = commandTimestamp;
-      } else if (topic === TOPIC_COMMAND_COMPLETION) {
-        const currentTimeNs = Date.now() * 1000000;
-        const receivedCommandId = parseInt(receivedMessage, 10);
-        if (commandTimestamps.current.has(receivedCommandId)) {
-          commandTimestamps.current.get(receivedCommandId).T6 = currentTimeNs;
-        }
-        trimCommandTimestamps();
+    const handleChatMessage = async (message) => {
+      setMessages((prevMessages) => [...prevMessages, `ROS2: ${message.toString()}`]);
+    };
+
+    const handleTimestampMessage = async (message) => {
+      try {
+      const receivedTimestamp = JSON.parse(message.toString());
+      const commandId = receivedTimestamp.command_id;
+      const commandTimestampIndex = receivedTimestamp.timestamp_index;
+      const commandTimestamp = receivedTimestamp.timestamp;
+
+      if (!commandTimestamps.current.has(commandId)) {
+        commandTimestamps.current.set(commandId, { T1: null, T2: null, T3: null, T4: null, T5: null, T6: null });
+      }
+      commandTimestamps.current.get(commandId)['T' + commandTimestampIndex] = commandTimestamp;
+      } catch (error) {
+      console.error('Failed to parse timestamp message:', error);
+      }
+    };
+
+    const handleCommandCompletionMessage = async (message, currentTimeNs) => {
+      const receivedCommandId = parseInt(message.toString(), 10);
+
+      if (commandTimestamps.current.has(receivedCommandId)) {
+      commandTimestamps.current.get(receivedCommandId).T6 = currentTimeNs;
+      }
+      trimCommandTimestamps();
+    };
+
+    mqttClient.on('message', async (topic, message) => {
+      const currentTimeNs = Date.now() * 1000000; // Register time early
+      const handlers = {
+      [TOPIC_CHAT]: handleChatMessage,
+      [TOPIC_TIMESTAMP]: handleTimestampMessage,
+      [TOPIC_COMMAND_COMPLETION]: (msg) => handleCommandCompletionMessage(msg, currentTimeNs),
+      };
+
+      const handler = handlers[topic];
+      if (handler) {
+      await handler(message);
+      } else {
+      console.warn(`Unhandled topic: ${topic}`);
       }
     });
 
@@ -58,10 +82,11 @@ const TeleopInterface = () => {
       mqttClient.end();
     };
   }, []);
+    
 
   const sendMessage = () => {
     if (client) {
-      client.publish(TOPIC_CHAT, messageInput);
+      client.publish(TOPIC_CHAT, messageInput, { qos: 1 });
       setMessages((prevMessages) => [...prevMessages, `You: ${messageInput}`]);
       setMessageInput('');
     }
@@ -128,9 +153,18 @@ const TeleopInterface = () => {
     simulateCommand();
   };
 
-    const pubTwistStamped = useCallback((linear, angular) => {
+  async function publishMessage(topic, message) {
+    try {
+      const packet = await client.publishAsync(topic, message, { qos: 1 });
+      console.log('Message published:', packet);
+    } catch (err) {
+      console.error('Failed to publish message:', err);
+    }
+  }
+
+  const pubTwistStamped = useCallback((linear, angular) => {
+    const currentTime = Date.now();
     if (client) {
-      const currentTime = Date.now();
       const twistStamped = JSON.stringify({
         header: {
           stamp: {
@@ -145,7 +179,7 @@ const TeleopInterface = () => {
         }
       });
   
-      client.publish(TOPIC_DRIVE, twistStamped);
+      publishMessage(TOPIC_DRIVE, twistStamped);
     }
   }, [client]);
 
