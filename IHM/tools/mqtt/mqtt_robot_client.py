@@ -5,6 +5,7 @@ import socket
 import threading
 import json
 import argparse
+import select
 
 # Load settings from JSON file
 with open('settings.json', 'r') as f:
@@ -13,12 +14,13 @@ with open('settings.json', 'r') as f:
 # Extract MQTT settings from the JSON config
 mqtt_settings = settings['mqttSettings']
 MQTT_BROKER = mqtt_settings['url']
-MQTT_PORT = 9001  # WebSocket port
+MQTT_PORT = mqtt_settings['port']
 MQTT_USERNAME = mqtt_settings['options']['username']
 MQTT_PASSWORD = mqtt_settings['options']['password']
 MQTT_TOPIC_CMD_VEL = "cmd_vel/geometry_msgs/TwistStamped"
 MQTT_TOPIC_COMPLETION = "temp_completion/std_msgs/Int64"
 MQTT_TOPIC_TIMESTAMP = "cmd_vel_time_stamp/interfaces/CommandTimestamp"
+MQTT_TOPIC_CHATTER = "chatter/std_msgs/String"
 
 # Parse command-line arguments for robot IP and port
 parser = argparse.ArgumentParser(description='MQTT Robot Client')
@@ -31,23 +33,26 @@ ROBOT_PORT = args.robot_port
 
 class YunoboMQTTClient:
     def __init__(self):
-        # MQTT setup
-        self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, transport="websockets")
+        # Initialize stop flag for threads
+        self.stop_thread = threading.Event()
+        
+        # Set up MQTT client
+        self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.mqtt_client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_message
-        self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+        self.mqtt_client.will_set(MQTT_TOPIC_CHATTER, "Client Disconnected", qos=0, retain=False)
+        
+        # MQTT connection thread
+        self.mqtt_thread = threading.Thread(target=self.start_mqtt_loop, daemon=True)
+        self.mqtt_thread.start()
 
         # Robot socket setup
         self.client_socket = self.setup_socket()
-
+        
         # Start a background thread for socket handling
-        self.stop_thread = False
-        self.socket_thread = threading.Thread(target=self.socket_handler)
+        self.socket_thread = threading.Thread(target=self.socket_handler, daemon=True)
         self.socket_thread.start()
-
-        # Start MQTT loop
-        self.mqtt_client.loop_start()
 
     def setup_socket(self):
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -55,12 +60,20 @@ class YunoboMQTTClient:
         client_socket.connect_ex((ROBOT_IP, ROBOT_PORT))
         return client_socket
 
+    def start_mqtt_loop(self):
+        self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=10)
+        self.mqtt_client.loop_start()
+        # Keep the MQTT thread running as long as stop_thread is not set
+        while not self.stop_thread.is_set():
+            time.sleep(1)
+        self.mqtt_client.loop_stop()
+
     def on_connect(self, client, userdata, flags, rc, properties=None):
-        print("Connected to MQTT Broker with result code " + str(rc))
-        client.subscribe(MQTT_TOPIC_CMD_VEL)
+        print(f"Connected to MQTT Broker with result code {rc}")
+        client.subscribe(MQTT_TOPIC_CMD_VEL, qos=0)
 
     def on_message(self, client, userdata, msg):
-        T2 = int(time.time() * 1e9)
+        T2 = time.time_ns()
         received_message = msg.payload.decode('utf-8')
         if msg.topic == MQTT_TOPIC_CMD_VEL:
             # Handle the cmd_vel message (e.g., for controlling robot movement)
@@ -79,28 +92,29 @@ class YunoboMQTTClient:
         packed_data = struct.pack(">qff", command_id, linear_x, angular_z)
         try:
             self.client_socket.sendall(packed_data)
-        except BlockingIOError:
-            print("Warning: Failed to send command to robot.")
+        except (BlockingIOError, OSError) as e:
+            print(f"Warning: Failed to send command to robot due to {e}")
 
     def extract_ns_from_header(self, header_stamp):
         return int(header_stamp['sec'] * 1e9 + header_stamp['nanosec'])
 
     def socket_handler(self):
-        while not self.stop_thread:
-            try:
-                data = self.client_socket.recv(16)
-                if data:
-                    self.process_received_data(data)
-            except BlockingIOError:
-                pass
-            time.sleep(0.01)  # Polling delay
+        while not self.stop_thread.is_set():
+            ready_to_read, _, _ = select.select([self.client_socket], [], [], 0.1)
+            if self.client_socket in ready_to_read:
+                try:
+                    data = self.client_socket.recv(16)
+                    if data:
+                        self.process_received_data(data)
+                except (BlockingIOError, OSError) as e:
+                    print(f"Error receiving data from robot socket: {e}")
 
     def process_received_data(self, data):
-        T4 = int(time.time() * 1e9)
+        T4 = time.time_ns()
         command_id, T3 = struct.unpack(">qq", data)
-
-        # Publish completion and timestamp data
-        self.mqtt_client.publish(MQTT_TOPIC_COMPLETION, str(command_id))
+        
+        # Publish completion and timestamp data with QoS 0 for faster publishing
+        self.mqtt_client.publish(MQTT_TOPIC_COMPLETION, str(command_id), qos=0)
         self.publish_timestamp(command_id, 3, T3)
         self.publish_timestamp(command_id, 4, T4)
 
@@ -110,13 +124,14 @@ class YunoboMQTTClient:
             "timestamp_index": timestamp_index,
             "timestamp": timestamp_value
         }
-        self.mqtt_client.publish(MQTT_TOPIC_TIMESTAMP, json.dumps(timestamp_message))
+        # Publish with QoS 0 for faster publishing
+        self.mqtt_client.publish(MQTT_TOPIC_TIMESTAMP, json.dumps(timestamp_message), qos=0)
 
     def stop(self):
-        self.stop_thread = True
+        self.stop_thread.set()  # Signal threads to stop
         self.socket_thread.join()
+        self.mqtt_thread.join()
         self.client_socket.close()
-        self.mqtt_client.loop_stop()
         self.mqtt_client.disconnect()
 
 if __name__ == "__main__":
