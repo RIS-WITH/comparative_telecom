@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import mqtt from 'mqtt';
 import mqttSettings from './settings';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { pack, unpack } from 'msgpackr';
 
 const TeleopInterface = () => {
   const [messages, setMessages] = useState([]);
@@ -39,7 +40,7 @@ const TeleopInterface = () => {
 
     const handleTimestampMessage = async (message) => {
       try {
-      const receivedTimestamp = JSON.parse(message.toString());
+      const receivedTimestamp = unpack(message);
       const commandId = receivedTimestamp.command_id;
       const commandTimestampIndex = receivedTimestamp.timestamp_index;
       const commandTimestamp = receivedTimestamp.timestamp;
@@ -54,7 +55,7 @@ const TeleopInterface = () => {
     };
 
     const handleCommandCompletionMessage = async (message, currentTimeNs) => {
-      const receivedCommandId = parseInt(message.toString(), 10);
+      const receivedCommandId = unpack(message);
 
       if (commandTimestamps.current.has(receivedCommandId)) {
       commandTimestamps.current.get(receivedCommandId).T6 = currentTimeNs;
@@ -86,7 +87,8 @@ const TeleopInterface = () => {
 
   const sendMessage = () => {
     if (client) {
-      client.publish(TOPIC_CHAT, messageInput, { qos: 1 });
+      const packedMessage = pack(messageInput);
+      client.publish(TOPIC_CHAT, packedMessage, { qos: 0 });
       setMessages((prevMessages) => [...prevMessages, `You: ${messageInput}`]);
       setMessageInput('');
     }
@@ -165,7 +167,7 @@ const TeleopInterface = () => {
   const pubTwistStamped = useCallback((linear, angular) => {
     const currentTime = Date.now();
     if (client) {
-      const twistStamped = JSON.stringify({
+      const twistStamped = {
         header: {
           stamp: {
             sec: Math.floor(currentTime / 1000),
@@ -177,9 +179,9 @@ const TeleopInterface = () => {
           linear: { x: linear, y: 0.0, z: 0.0 },
           angular: { x: 0.0, y: 0.0, z: angular }
         }
-      });
+      };
   
-      publishMessage(TOPIC_DRIVE, twistStamped);
+      publishMessage(TOPIC_DRIVE, pack(twistStamped));
     }
   }, [client]);
 

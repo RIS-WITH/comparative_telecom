@@ -13,8 +13,8 @@
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
-    "@foxglove/cdr": "^3.3.0",
     "mqtt": "^5.10.1",
+    "msgpackr": "^1.11.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
