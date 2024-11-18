@@ -1,9 +1,9 @@
 # Test 1  : ROSWebTools
 
 
-## RTT and Transmission Time Test in ROS 2 Iron
+## RTT and Transmission Time Test in ROS 2 Iron using ROSWebTools Interface
 
-### 1. **Launch a Web Server**
+### 1. **Start the Apache Web Server or any other hosting server**
    - Start a web hosting server like Apache to host your web interface, making it accessible to the tablet or other devices.
    - **Command:** 
      ```bash
@@ -16,63 +16,100 @@
      ```
      You should see the service as "active (running)".
 
-### 2. **Start the Webridge Server on Loki**
-   - Launch the ROS 2 Webridge server on the Loki machine. This server acts as the bridge between the ROS 2 nodes and the web interface.
-   - **Command:**
-     ```bash
-     ros2 launch rosbridge_server rosbridge_websocket_launch.xml 
-     ```
-   - **Troubleshooting:**
-     - Ensure that `webridge_server` is installed and sourced correctly. If needed, source your workspace:
-     ```bash
-     source /opt/ros/iron/setup.bash
-     ```
+### 2. **Make the test ros workspace and build it and export it's location**
+#### 2.1 **On Loki**
+    - Create a new ROS 2 workspace for the test and build the workspace.
+    - add the two packages `interface` and `loki` to the `src` folder of the workspace which are located in the `IHM/tools` folder.
+    - **Command:**
+      ```bash
+      mkdir -p ~/ros2_ws/src
+      cd ~/ros2_ws
+      cp -r ~/IHM/tools/interface ~/ros2_ws/src
+      cp -r ~/IHM/tools/loki ~/ros2_ws/src
+      colcon build
+      ```
+    - **Export the Workspace Location:**
+      ```bash
+      export test_ws=~/ros2_ws
+      ```
+      This will export the workspace location to the environment variable `ROS2_WS`.
+
+#### 2.2 **On Robot**
+    - Copy the robot script /IHM/tools/robot/robot_server.py to the robot.
+    - **Command:**
+      ```bash
+      scp ~/IHM/tools/robot/robot_server.py <robot_ip>:~/
+      ```
+    - Run the robot script on the robot.
+    - **Command:**
+      ```bash
+      python robot_server.py
+      ```
+    - **Note:**
+      - The script works in both Python 2 and Python 3.
+#### 2.3 **On Yunobo**
+    - Create a new ROS 2 workspace for the test and build the workspace.
+    - add the two packages `interface` and `yunobo` to the `src` folder of the workspace which are located in the `IHM/tools` folder.
+    - **Command:**
+      ```bash
+      mkdir -p ~/ros2_ws/src
+      cd ~/ros2_ws
+      cp -r ~/IHM/tools/interface ~/ros2_ws/src
+      cp -r ~/IHM/tools/yunobo ~/ros2_ws/src
+      colcon build
+      ```
+    - **Export the Workspace Location:**
+      ```bash
+      export test_ws=~/ros2_ws
+      ```
+      This will export the workspace location to the environment variable `ROS2_WS`.
+
 
 ### 3. **Run ROS 2 Iron Nodes**
-   - Launch the required ROS 2 nodes for the Loki, Yunobo, and Robot. These nodes should be located in the `ros2-nodes` folder on their respective machines.
-   - **Command:**
-     ```bash
-     ros2 run <package_name> <node_name>
+#### 3.1 **On Loki**
+    - Find the Loki.sh file in the `IHM/tools/scripts` folder and run it.
+    - You may need to change the permissions of the file to make it executable.
+    - **Command:**
+      ```bash
+      chmod +x Loki.sh
+      ./Loki.sh <middleware>
+      ```
+#### 3.2 **On Yunobo**
+    - The same as Loki, find the Yunobo.sh file in the `IHM/tools/scripts` folder and run it.
+    - **Command:**
+      ```bash
+      chmod +x Yunobo.sh
+      ./Yunobo.sh <middleware> <ip_address>
+      ```
+#### 3.3 **For zenoh**
+    - For zenoh, you need to export the zenoh workspace location to the environment variable `zenoh_ws`.
+    - **Command:**
+      ```bash
+      export zenoh_ws=~/zenoh_ws
+      ```
+    - Then run the zenoh nodes.
+    - **Command:**
+      ```bash
+      ./Loki.sh zenoh
+      ./Yunobo.sh zenoh <ip_address>
+      ```
+    - **Note:**
+      - Zenoh routers should be running on both devices and one of them should be running the zenoh router with the IP address of the other device.
+      - You can find more information on how to install and run the middleware in the zenoh documentation. [Zenoh Documentation](https://github.com/ros2/rmw_zenoh)
+### 4. **Open the Web Interface**
+   - Open the web interface on the tablet or any other device by entering the IP address of the server in the browser.
+   - **URL:** 
      ```
-     Replace `<package_name>` and `<node_name>` with the appropriate package and node names for each machine (Loki, Yunobo, and Robot).
-   - **Examples:**
-     ```bash
-     ros2 run my_robot_package loki_node
-     ros2 run my_robot_package yunobo_node
-     ros2 run my_robot_package robot_node
+     http://<ip_address>
      ```
+   - Go to the end of the page were you will find the buttons to start and download the test.
+   - **Note:** 
+     - The test will start after pressing the start button.
+     - The button will change color to indicate the test is running.
+     - The test will take 30 minutes to complete.
 
-   - **Troubleshooting:**
-     - Make sure each node is set up correctly and communicating. You can use the following to confirm that the nodes are running:
-     ```bash
-     ros2 node list
-     ```
-     - Ensure that they are using the same ROS 2 network and Domain ID.
 
-### 4. **Access the Web Interface**
-   - From the tablet or any device on the same network, open a browser and access the web interface served by your Apache server.
-   - **URL:**
-     ```
-     http://<your-server-ip>
-     ```
-     Replace `<your-server-ip>` with the IP address of the machine running the Apache web server. For example, `http://192.168.1.100`.
 
-   - **Troubleshooting:**
-     - If the page doesn't load, verify network connectivity and make sure the Apache server is running. Use `ifconfig` or `ip a` to check your machine's IP address.
-
-### 5. **Simulate Button Click Test**
-   - Once the web interface is loaded on the tablet, look for the "Simulate Button Click Test" button.
-   - **Action:**
-     - Click on the "Simulate Button Click Test" button to begin the RTT and Transmission Time Test.
-
-### 6. **Wait for Test Completion**
-   - Allow the test to run for a minimum of **5 minutes** without interruption.
-   - This test will measure the Round-Trip Time (RTT) and transmission times between the web interface and the ROS 2 system, simulating real-time interaction.
-
-### 7. **Download Test Results**
-   - Once the test is complete, a "Download Results" button will appear.
-   - **Action:**
-     - Click the "Download Results" button to download the log file or dataset containing the results of the RTT and transmission time test.
 
 
 
