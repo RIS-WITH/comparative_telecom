@@ -1,4 +1,5 @@
 #!/bin/bash
+# go to the home directory
 cd
 # Display help message
 display_help() {
@@ -74,7 +75,7 @@ source_middleware() {
         "zenoh")
             echo "Setting up Zenoh middleware."
             export RMW_IMPLEMENTATION=rmw_zenoh_cpp
-            source_zenoh
+            source $zenoh_ws/install/setup.bash
             ;;
     esac
 }

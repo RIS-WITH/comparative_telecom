@@ -6,6 +6,7 @@ import threading
 import json
 import argparse
 import select
+import msgpack  # Import MessagePack
 
 # Load settings from JSON file
 with open('settings.json', 'r') as f:
@@ -74,17 +75,20 @@ class YunoboMQTTClient:
 
     def on_message(self, client, userdata, msg):
         T2 = time.time_ns()
-        received_message = msg.payload.decode('utf-8')
-        if msg.topic == MQTT_TOPIC_CMD_VEL:
-            # Handle the cmd_vel message (e.g., for controlling robot movement)
-            self.handle_cmd_vel(received_message, T2)
+        try:
+            # Decode the message payload with msgpack
+            received_message = msgpack.unpackb(msg.payload, raw=False)
+            if msg.topic == MQTT_TOPIC_CMD_VEL:
+                # Handle the cmd_vel message (e.g., for controlling robot movement)
+                self.handle_cmd_vel(received_message, T2)
+        except msgpack.exceptions.UnpackException as e:
+            print(f"Error decoding message: {e}")
 
     def handle_cmd_vel(self, received_message, T2):
         # Parse the received message and send command to the robot
-        message = json.loads(received_message)
-        linear_x = message['twist']['linear']['x']
-        angular_z = message['twist']['angular']['z']
-        command_id = self.extract_ns_from_header(message['header']['stamp'])
+        linear_x = received_message['twist']['linear']['x']
+        angular_z = received_message['twist']['angular']['z']
+        command_id = self.extract_ns_from_header(received_message['header']['stamp'])
         self.send_cmd_vel_to_robot(linear_x, angular_z, command_id)
         self.publish_timestamp(command_id, 2, T2)
 
@@ -113,8 +117,8 @@ class YunoboMQTTClient:
         T4 = time.time_ns()
         command_id, T3 = struct.unpack(">qq", data)
         
-        # Publish completion and timestamp data with QoS 0 for faster publishing
-        self.mqtt_client.publish(MQTT_TOPIC_COMPLETION, str(command_id), qos=0)
+        # Publish completion and timestamp data using msgpack
+        self.mqtt_client.publish(MQTT_TOPIC_COMPLETION, msgpack.packb(command_id), qos=0)
         self.publish_timestamp(command_id, 3, T3)
         self.publish_timestamp(command_id, 4, T4)
 
@@ -124,8 +128,8 @@ class YunoboMQTTClient:
             "timestamp_index": timestamp_index,
             "timestamp": timestamp_value
         }
-        # Publish with QoS 0 for faster publishing
-        self.mqtt_client.publish(MQTT_TOPIC_TIMESTAMP, json.dumps(timestamp_message), qos=0)
+        # Publish using msgpack
+        self.mqtt_client.publish(MQTT_TOPIC_TIMESTAMP, msgpack.packb(timestamp_message, use_bin_type=True), qos=0)
 
     def stop(self):
         self.stop_thread.set()  # Signal threads to stop
