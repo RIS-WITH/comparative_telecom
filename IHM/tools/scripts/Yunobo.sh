@@ -63,6 +63,8 @@ source_middleware() {
     case $1 in
         "default")
             echo "Using default middleware."
+            # unset RMW_IMPLEMENTATION to use default middleware if set
+            unset RMW_IMPLEMENTATION
             ;; # Default setup
         "fastdds")
             echo "Setting up FastDDS middleware."

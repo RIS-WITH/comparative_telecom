@@ -90,20 +90,36 @@
     <script type="text/javascript">
         // Connecting to ROS
         // -----------------
-        var ros = new ROSLIB.Ros({
-            url: 'ws://140.93.6.33:9090'
-        });
+        var ros = new ROSLIB.Ros();
+
+        function connectToRosbridge() {
+            var rosbridgeIPAddress = document.getElementById('rosbridgeIPAddress').value;
+            var rosbridgePort = document.getElementById('rosbridgePort').value;
+            console.log('Connecting to ROS Bridge at ' + rosbridgeIPAddress + ':' + rosbridgePort + '...');
+
+            ros.connect('ws://' + rosbridgeIPAddress + ':' + rosbridgePort);
+        }
 
         ros.on('connection', function () {
             console.log('Connected to websocket server.');
+
+            var rosbridgeStatus = document.getElementById('rosbridgeStatus');
+            rosbridgeStatus.innerHTML = 'Connected';
+            rosbridgeStatus.style.color = 'green';
         });
 
         ros.on('error', function (error) {
             console.log('Error connecting to websocket server: ', error);
+
+            var rosbridgeStatus = document.getElementById('rosbridgeStatus');
+            rosbridgeStatus.innerHTML = 'Error';
         });
 
         ros.on('close', function () {
             console.log('Connection to websocket server closed.');
+
+            var rosbridgeStatus = document.getElementById('rosbridgeStatus');
+            rosbridgeStatus.innerHTML = 'Closed';
         });
 
         /// Maximum size for commandTimestamps
@@ -160,8 +176,8 @@
             }else{
                 // Initialize commandTimestamps entry if not present
                 commandTimestamps.set(commandId, { T1: null, T2: null, T3: null, T4: null, T5: null, T6: currentTimeNs });
-                //console.log('Received completion for command ' + commandId + ' at ' + currentTimeNs);
             }
+            //console.log('Received completion for command ' + commandId + ' at ' + currentTimeNs);
             // Trim the commandTimestamps map if it exceeds the max size
             trimCommandTimestamps();
         });
@@ -175,11 +191,15 @@
             var hiddenElement = document.createElement('a');
             hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
             hiddenElement.target = '_blank';
-            hiddenElement.download = 'commandTimestamps.csv';
+            var firstInterval = document.getElementById('firstInterval').value;
+            var secondInterval = document.getElementById('secondInterval').value;
+            var thirdInterval = document.getElementById('thirdInterval').value;
+            var middlewares = document.getElementById('middlewares').value;
+            hiddenElement.download = 'commandTimestamps_rostools' + middlewares + '_intervals_' + firstInterval + '_' + secondInterval + '_' + thirdInterval + '.csv';
             hiddenElement.click();
         }
 
-        const testSimulateCommandClicks = () => { // Notice the capital "C" in "Clicks"
+        const testSimulateCommandClicks = () => { 
             const commands = [
                 { linear: 1.0, angular: 0.0 },
                 { linear: 0.0, angular: 1.0 },
@@ -187,6 +207,10 @@
                 { linear: 0.0, angular: -1.0 },
                 { linear: 0.0, angular: 0.0 }
             ];
+            const firstInterval = document.getElementById('firstInterval').value;
+            const secondInterval = document.getElementById('secondInterval').value;
+            const thirdInterval = document.getElementById('thirdInterval').value;
+            console.log('First Interval: ' + firstInterval + 'ms, Second Interval: ' + secondInterval + 'ms, Third Interval: ' + thirdInterval + 'ms');
 
             const startTime = Date.now();
             const testButton = document.querySelector('button[onclick="testSimulateCommandClicks()"]');
@@ -212,9 +236,9 @@
                 move(command.linear, command.angular); // Publish the command
 
                 // Adjust interval timing based on elapsed time
-                let interval = 60; // Initial interval of 60ms
-                if (elapsedTime >= 1200000) interval = 10000; // After 20 min, set to 10s
-                else if (elapsedTime >= 600000) interval = 1000; // After 10 min, set to 1s
+                let interval = firstInterval; // Default interval
+                if (elapsedTime >= 1200000) interval = thirdInterval; // After 20 min, set to 10s
+                else if (elapsedTime >= 600000) interval = secondInterval; // After 10 min, set to 1s
 
                 setTimeout(simulateCommand, interval); // Schedule the next command
             };
@@ -222,7 +246,6 @@
             // Start the initial command
             simulateCommand();
         };
-
 
         // Get the current time in milliseconds
         function getCurrentTime() {
@@ -361,6 +384,7 @@
     <div id="title-container">
         <h1>ROS Web Tools</h1>
     </div>
+    <!--
     <div id="container">
         <div id="video-card" class="w3-card-4 w3-margin-bottom">
             <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
@@ -370,6 +394,7 @@
                 <img id="videoStream" src="http://kirito-dock:8080/stream?topic=/camera/image_raw" width="640" height="480" />
             </div>
         </div>
+    -->
         <div id="commands-card" class="w3-card-4 w3-margin-bottom">
             <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
                 <h5 class="w3-bar-item" style="margin: 0;">Commands</h5>
@@ -396,7 +421,7 @@
             </div>
         </div>
     </div>
-
+    <!--
     <div id="lidar-chat-container">
         <div id="lidar-card" class="w3-card-4 w3-margin-bottom">
             <header class="w3-bar w3-green" onclick="document.getElementById('Lidar').classList.toggle('w3-hide');">
@@ -418,11 +443,65 @@
                 <button id="sendMessage" onclick="sendMessage()">Send</button>
             </div>
         </div>
-    </div>
+    </div> -->
 
-    <button onclick="testSimulateCommandClicks()">Start Command Simulation</button>
-    <button onclick="downloadCommandTimestamps()">Download Command Timestamps</button>
-    <button onclick="trimCommandTimestamps()">Trim Command Timestamps</button>
+    <div id="simulation-controls" class="w3-card-4 w3-margin-bottom w3-padding">
+        <header class="w3-bar w3-green">
+            <h5 class="w3-bar-item" style="margin: 0;">Command Simulation</h5>
+        </header>
+        <div class="w3-container w3-padding">
+            <div class="w3-row-padding">
+                <div class="w3-half">
+                    <label for="rosbridgeIPAddress">ROS Bridge IP Address:</label>
+                    <input type="text" id="rosbridgeIPAddress" class="w3-input w3-border" value="140.93.6.33" placeholder="ROS Bridge IP Address">
+                </div>
+                <div class="w3-half">
+                    <label for="rosbridgePort">ROS Bridge Port:</label>
+                    <input type="text" id="rosbridgePort" class="w3-input w3-border" value="9090" placeholder="ROS Bridge Port">
+                </div>
+            </div>
+            <div class="w3-row-padding w3-margin-top">
+                <div class="w3-half">
+                    <p>ROS Bridge Connection Status: <span id="rosbridgeStatus" style="color: red;">Not Connected</span></p>
+                </div>
+                <div class="w3-half">
+                    <button class="w3-button w3-blue w3-margin-right" onclick="connectToRosbridge()">Connect to ROS Bridge</button>
+                </div>
+            </div>
+            
+            <h4>Simulation Duration: 30 Minutes</h4>
+            <p>Divided into 3 parts with different intervals each will last 10 minutes.</p>
+            <div class="w3-row-padding">
+                <div class="w3-half">
+                    <label for="middlewares">Middlewares:</label>
+                    <select id="middlewares" class="w3-select w3-border">
+                        <option value="defaultDDS">Default DDS</option>
+                        <option value="FastDDS">Fast DDS</option>
+                        <option value="CycloneDDS">Cyclone DDS</option>
+                        <option value="Zenoh">Zenoh</option>
+                    </select>
+                </div>
+            </div>
+            <div class="w3-row-padding">
+                <div class="w3-third">
+                    <label for="firstInterval">First Interval:</label>
+                    <input type="number" id="firstInterval" class="w3-input w3-border" value="100" min="1">ms
+                </div>
+                <div class="w3-third">
+                    <label for="secondInterval">Second Interval:</label>
+                    <input type="number" id="secondInterval" class="w3-input w3-border" value="1000" min="1">ms
+                </div>
+                <div class="w3-third">
+                    <label for="thirdInterval">Third Interval:</label>
+                    <input type="number" id="thirdInterval" class="w3-input w3-border" value="10000" min="1">ms
+                </div>
+            </div>
+            <br />
+            <button class="w3-button w3-green w3-margin-right" onclick="testSimulateCommandClicks()">Start Command Simulation</button>
+            <button class="w3-button w3-blue w3-margin-right" onclick="downloadCommandTimestamps()">Download Command Timestamps</button>
+            <button class="w3-button w3-red" onclick="trimCommandTimestamps()">Trim Command Timestamps</button>
+        </div>
+    </div>
 </body>
 
 </html>
